@@ -1,6 +1,6 @@
 Cython==0.29.14
 
-jupyter==
+jupyter==1.0.0
 blinker==1.4
 opencv_python_headless==4.1.0.25
 Flask==1.1.1
