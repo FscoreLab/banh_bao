@@ -63,7 +63,6 @@ target/
 # Database
 *.db
 *.rdb
-*.csv
 *.nii.gz
 *.zip
 
@@ -90,7 +89,6 @@ target/
 .mypy_cache/
 
 # Data folders
-/data/*
 /models/*
 /logs/*
 /instance/
