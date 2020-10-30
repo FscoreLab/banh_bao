@@ -47,6 +47,21 @@ def inter_over_metrics(img1, img2):
     }
     return tmp
 
+def binary_feature(img_expert, img_model):
+    """
+    Arguments
+    ---------
+
+    img_expert, img_model  (np.ndarray) : Boolean np.ndarrays
+    """
+    gt = (np.sum(img_expert) > 0)
+    pred = (np.sum(img_model) > 0)
+    tmp = {
+        "true": gt == pred,
+        "positive_gt": gt,
+    }
+    return tmp
+
 
 def _read_png(fpath):
     return cv2.imread(fpath)[:,:,::-1]
@@ -92,17 +107,18 @@ def get_metrics(data):
 
     out_data = []
     sample_name_dict = {"s1": "1", "s2": "2", "s3": "3"}
-    for metric in ["inter_over_metrics"]:
-        for data_dict in tqdm.tqdm(data, desc=metric):
-            for s_key in ["s1", "s2", "s3"]:
+    for data_dict in tqdm.tqdm(data, desc="Generating metrics"):
+        for s_key in ["s1", "s2", "s3"]:
 
-                tmp = {
-                    "id": f"{data_dict['fname']}_{sample_name_dict[s_key]}", 
-                    "fname": data_dict["fname"], 
-                    "sample_name": sample_name_dict[s_key]
-                }
-                tmp.update(eval(metric)(data_dict["expert"], data_dict[s_key]))
-                out_data.append(tmp)
+            tmp = {
+                "id": f"{data_dict['fname']}_{sample_name_dict[s_key]}", 
+                "fname": data_dict["fname"], 
+                "sample_name": sample_name_dict[s_key]
+            }
+            for metric in ["inter_over_metrics", "binary_feature"]:
+                if metric in ["inter_over_metrics", "binary_feature"]:
+                    tmp.update(eval(metric)(data_dict["expert"], data_dict[s_key]))
+            out_data.append(tmp)
 
     return pd.DataFrame(out_data)
 
