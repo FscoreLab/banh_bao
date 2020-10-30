@@ -24,3 +24,4 @@ streaming-form-data==1.5.2
 gunicorn==20.0.4
 gevent==1.4.0
 SimpleITK==1.2.4
+seaborn==0.11.0
