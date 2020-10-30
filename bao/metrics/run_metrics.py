@@ -68,6 +68,15 @@ def read_files(args):
         })
     return data
 
+def prepare_markup(fpath):
+    mark = pd.read_csv(fpath)
+    markup = pd.wide_to_long(mark, stubnames="Sample ", i="Case", j="sample_name").reset_index()
+    markup = markup.rename(columns={"Sample ": "y"})
+    markup["sample_name"] = markup["sample_name"].astype(str)
+    markup["fname"] = markup["Case"].map(lambda x: osp.splitext(x)[0])
+    markup["id"] = markup[["fname", "sample_name"]].agg('_'.join, axis=1)
+    return markup[["id", "y"]]
+
 
 def get_metrics(data):
     """
@@ -82,12 +91,16 @@ def get_metrics(data):
     """
 
     out_data = []
-    sample_name_dict = {"s1": "Sample 1", "s2": "Sample 2", "s3": "Sample 3"}
+    sample_name_dict = {"s1": "1", "s2": "2", "s3": "3"}
     for metric in ["inter_over_metrics"]:
         for data_dict in tqdm.tqdm(data, desc=metric):
             for s_key in ["s1", "s2", "s3"]:
 
-                tmp = {"fname": data_dict["fname"], "sample_name": sample_name_dict[s_key]}
+                tmp = {
+                    "id": f"{data_dict['fname']}_{sample_name_dict[s_key]}", 
+                    "fname": data_dict["fname"], 
+                    "sample_name": sample_name_dict[s_key]
+                }
                 tmp.update(eval(metric)(data_dict["expert"], data_dict[s_key]))
                 out_data.append(tmp)
 
@@ -98,11 +111,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser("Gather metrics")
 
     parser.add_argument("--task_name", default="sample")
+
     parser.add_argument("--folder_origin", default=osp.join(system_config.data_dir, "Dataset", "Origin"))
     parser.add_argument("--folder_expert", default=osp.join(system_config.data_dir, "Dataset", "Expert"))
     parser.add_argument("--folder_1", default=osp.join(system_config.data_dir, "Dataset", "sample_1"))
     parser.add_argument("--folder_2", default=osp.join(system_config.data_dir, "Dataset", "sample_2"))
     parser.add_argument("--folder_3", default=osp.join(system_config.data_dir, "Dataset", "sample_3"))
+
+    parser.add_argument("--markup", default=osp.join(system_config.data_dir, "Dataset", "OpenPart.csv"))
+    parser.add_argument("--add_markup", action="store_true")
+
     parser.add_argument("--output_dir", default=osp.join(system_config.data_dir, "interim"))
 
     args = parser.parse_args()
@@ -111,6 +129,10 @@ if __name__ == "__main__":
 
     data = read_files(args)
     metrics = get_metrics(data)
+
+    if args.add_markup:
+        markup = prepare_markup(args.markup)
+        metrics = pd.merge(metrics, markup, how="left", on="id")
 
     os.makedirs(args.output_dir, exist_ok=True)
     metrics.to_csv(output_file, index=False)
