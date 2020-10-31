@@ -105,8 +105,8 @@ if __name__ == "__main__":
         "min_child_samples": [1, 3, 5, 10],
         "num_leaves": [5, 7, 15, 31],
         "k": [15, 30, len(predictors)],
-        "lambda_l1": [0.0, 0.1, 1.0],
-        "lambda_l2": [0.0, 0.1, 1.0],
+        "reg_alpha": [0.0, 0.1, 1.0],
+        "reg_lambda": [0.0, 0.1, 1.0],
     }
 
     pred_y = []
