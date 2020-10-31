@@ -1,7 +1,8 @@
 import numpy as np
-import streamlit as st
-from streamlit_drawable_canvas import st_canvas
 from PIL import Image
+from streamlit_drawable_canvas import st_canvas
+
+import streamlit as st
 
 # Specify canvas parameters in application
 stroke_width = 3

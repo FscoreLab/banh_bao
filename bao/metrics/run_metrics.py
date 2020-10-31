@@ -8,13 +8,12 @@ import numpy as np
 import pandas as pd
 import surface_distance
 import tqdm
+from bao.config import system_config
+from bao.metrics import mask_utils
+from bao.metrics.ssim import ssim
+from bao.metrics.utils import *
 from scipy.ndimage.measurements import label
 from scipy.spatial.distance import directed_hausdorff
-
-from bao.config import system_config
-from bao.metrics.utils import *
-from bao.metrics.ssim import ssim
-from bao.metrics import mask_utils
 
 
 def intersection_and_union(img1, img2):
