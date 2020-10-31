@@ -8,4 +8,8 @@ class SystemConfig():
     model_dir = osp.join(root_dir, "models")
     data_dir = osp.join(root_dir, "data")
 
+class ClassConfig(object):
+    bad_id_masks = ['00007882_001_2', '00000211_041_2', '00011355_011_2']
+
 system_config = SystemConfig()
+class_config = ClassConfig()

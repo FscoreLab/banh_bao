@@ -12,8 +12,9 @@ from scipy.ndimage.measurements import label
 from scipy.spatial.distance import directed_hausdorff
 
 from bao.config import system_config
+from bao.metrics.utils import *
 from bao.metrics.ssim import ssim
-from bao.metrics.lungs_segmentator import lungs_finder_segmentator, area_out_of
+from bao.metrics import mask_utils
 
 
 def intersection_and_union(img1, img2):
@@ -176,6 +177,38 @@ def area_out_of_lungs(img_origin, img_expert, img_model):
     return tmp
 
 
+def positional_features(img_origin, img_expert, img_model):
+
+    lungs_mask_union = np.array(lungs_finder_segmentator(img_origin), dtype=np.uint8)
+    img_expert = img_expert.astype(np.uint8)
+    img_model = img_model.astype(np.uint8)
+
+    x_e, y_e = get_center_of_mass(img_expert)
+    x_m, y_m = get_center_of_mass(img_model)
+    x_l, y_l = get_center_of_mass(lungs_mask_union)
+
+    centers_e = get_centers_of_mass(img_expert)
+    centers_m = get_centers_of_mass(img_model)
+
+    dists = get_nearest_neighbor_dist(centers_e, centers_m)
+    w, h = get_lungs_size(img_origin)
+    max_dist = (w**2 + h**2)**0.5
+
+    mean_centroid_dist = np.mean(dists) / max_dist if len(dists) > 0 else 0
+    max_centroid_dist = np.max(dists) / max_dist if len(dists) > 0 else 0
+    min_centroid_dist = np.min(dists) / max_dist if len(dists) > 0 else 0
+    
+    tmp = {
+        "x_diff_center": np.abs(x_m - x_e) / w,
+        "y_diff_center": np.abs(y_m - y_e) / h,
+        "x_diff_center_lungs": np.abs(x_l - x_m) / w,
+        "y_diff_center_lungs": np.abs(y_l - y_m) / h,
+        "mean_centroid_dist": mean_centroid_dist,
+        "max_centroid_dist": max_centroid_dist,
+        "min_centroid_dist": min_centroid_dist,
+    }
+    return tmp
+
 def _read_png(fpath):
     return cv2.imread(fpath)[:, :, ::-1]
 
@@ -214,7 +247,18 @@ def prepare_markup(fpath):
     return markup[["id", "y"]]
 
 
-def get_metrics(data):
+def _add_key_postfix(dictionary, postfix):
+    """
+    Adds postfix to every key in dictionary
+    """
+    key_pairs = {old_key: f"{old_key}{postfix}" for old_key in list(dictionary.keys())}
+    new_dict = {}
+    for old_key, value in dictionary.items():
+        new_dict[key_pairs[old_key]] = value
+    return new_dict
+
+
+def get_metrics(data, form_mode="original"):
     """
     Arguments
     ---------
@@ -224,11 +268,26 @@ def get_metrics(data):
                     "orig": RGB 3-channel image,
                     "expert", "m_1", "m_2", "m_3": 2D boolean arrays
                     }
+    form_mode   (str) : If `original`, add features for ellipses and 
+                        rectangles for selected metrics, if `rect` - 
+                        generate features for rectangle masks, 
+                        if `ellipse` - generate features for ellipsoid masks
     """
 
     out_data = []
     sample_name_dict = {"s1": "1", "s2": "2", "s3": "3"}
     for data_dict in tqdm.tqdm(data, desc="Generating metrics"):
+        if form_mode in ["rect", "ellipse"]:
+            for markup_key in ["expert", "s1", "s2", "s3"]:
+                if form_mode == "rect":
+                    data_dict[markup_key] = mask_utils.convert_to_rectangles(data_dict[markup_key])
+                elif form_mode == "ellipse":
+                    data_dict[markup_key] = mask_utils.convert_to_ellipses(data_dict[markup_key])
+
+        if form_mode == "original":
+            expert_ellipse = mask_utils.convert_to_ellipses(data_dict["expert"])
+            expert_rect = mask_utils.convert_to_rectangles(data_dict["expert"])
+
         for s_key in ["s1", "s2", "s3"]:
 
             tmp = {
@@ -236,6 +295,11 @@ def get_metrics(data):
                 "fname": data_dict["fname"],
                 "sample_name": sample_name_dict[s_key],
             }
+
+            if form_mode == "original":
+                model_ellipse = mask_utils.convert_to_ellipses(data_dict[s_key])
+                model_rect = mask_utils.convert_to_rectangles(data_dict[s_key])
+
             for metric in [
                 "inter_over_metrics",
                 "binary_feature",
@@ -245,6 +309,7 @@ def get_metrics(data):
                 "surface_distances",
                 "area_features",
                 "area_out_of_lungs",
+                "positional_features",
             ]:
                 if metric in [
                     "inter_over_metrics",
@@ -258,9 +323,18 @@ def get_metrics(data):
                     tmp.update(eval(metric)(data_dict["expert"], data_dict[s_key]))
 
                 if metric in [
-                    "area_out_of_lungs"
+                    "area_out_of_lungs",
+                    "positional_features"
                 ]:
                     tmp.update(eval(metric)(data_dict["orig"], data_dict["expert"], data_dict[s_key]))
+
+                if metric in ["inter_over_metrics", "hausdorff_distance"] and form_mode == "original":
+                    tmp_tmp = eval(metric)(expert_ellipse, model_ellipse)
+                    tmp_tmp = _add_key_postfix(tmp_tmp, "_el")
+                    tmp.update(tmp_tmp)
+                    tmp_tmp = eval(metric)(expert_rect, model_rect)
+                    tmp_tmp = _add_key_postfix(tmp_tmp, "_rect")
+                    tmp.update(tmp_tmp)
 
             out_data.append(tmp)
 
@@ -280,6 +354,13 @@ if __name__ == "__main__":
 
     parser.add_argument("--markup", default=osp.join(system_config.data_dir, "Dataset", "OpenPart.csv"))
     parser.add_argument("--add_markup", action="store_true")
+    parser.add_argument(
+        "--form_mode",
+        default="original",
+        help="If `original`, add features for ellipses and rectangles for selected "
+        + "metrics, if `rect` generate features for rectangle masks, if `ellipse`"
+        + " generate features for ellipsoid masks",
+    )
 
     parser.add_argument("--output_dir", default=osp.join(system_config.data_dir, "interim"))
 
@@ -288,7 +369,7 @@ if __name__ == "__main__":
     output_file = osp.join(args.output_dir, f"{args.task_name}.csv")
 
     data = read_files(args)
-    metrics = get_metrics(data)
+    metrics = get_metrics(data, form_mode=args.form_mode)
 
     if args.add_markup:
         markup = prepare_markup(args.markup)
