@@ -36,8 +36,8 @@ split_df(df)
 
 ### Модель
 Для обучения модель использовался фреймворк [https://lightgbm.readthedocs.io/en/latest/](lightGBM).
-Так как данных мало использовалась [https://scikit-learn.org/stable/auto_examples/model_selection/plot_nested_cross_validation_iris.html](вложенная кросс-валидация).
-[https://c.mql5.com/3/103/nested-k-fold.png](Вложенная кросс-валидация)
+Так как данных мало использовалась [вложенная кросс-валидация](https://scikit-learn.org/stable/auto_examples/model_selection/plot_nested_cross_validation_iris.html).
+![https://c.mql5.com/3/103/nested-k-fold.png](Вложенная кросс-валидация)
 
 ### Синтетика
 Предположение - используем маски, которые врач оценил как 5 - то есть очень похожие на разметку врача.
