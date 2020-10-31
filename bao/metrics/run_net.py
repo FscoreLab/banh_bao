@@ -67,10 +67,9 @@ def _get_probs(model, image_3channels, transform=torch_config.transform):
         probs_NIH = res.detach().cpu().numpy()
     return probs_NIH.squeeze()
 
-def get_probs_for_file(model, image_fname):
-    image_3channels = _read_png(image_fname)
-    probs = _get_probs(model, image_3channels)
 
+def get_probs_for_3ch_image(model, image_3channels, image_fname="sample"):
+    probs = _get_probs(model, image_3channels)
     classes = model.pathologies
     case_name = osp.basename(image_fname)
     df = pd.DataFrame.from_dict({case_name: probs}, orient="index", columns=classes)
@@ -78,7 +77,12 @@ def get_probs_for_file(model, image_fname):
     df["No Finding"] = 1 - df.max(axis=1)
     df["No Finding Sum"] = -df.sum(axis=1)
     df["fname"] = df.index.str.split(".").str[0]
+    return df
 
+
+def get_probs_for_file(model, image_fname):
+    image_3channels = _read_png(image_fname)
+    df = get_probs_for_3ch_image(model, image_3channels, image_fname)
     return df
 
 
