@@ -1,6 +1,7 @@
 import argparse
 import os
 import os.path as osp
+from collections import Counter
 
 import cv2
 import numpy as np
@@ -11,7 +12,7 @@ from scipy.ndimage.measurements import label
 from scipy.spatial.distance import directed_hausdorff
 
 from bao.config import system_config
-from bao.metrics.ssim import msssim, ssim
+from bao.metrics.ssim import ssim
 
 
 def intersection_and_union(img1, img2):
@@ -83,23 +84,35 @@ def accuracy_features(img_expert, img_model):
     labeled, ncomponents = label(img_expert, structure)
     labeled_model, ncomponents_model = label(img_model, structure)
 
-    tp = len(np.unique(labeled[np.bitwise_and(labeled > 0, img_model > 0)]))
-    recall = np.nan if ncomponents == 0 else tp / ncomponents
-    precision = np.nan if ncomponents_model == 0 else tp / ncomponents_model
-    if precision + recall == 0.0:
-        f1 = 0.0
-    else:
-        f1 = (2 * precision * recall) / (precision + recall)
-
     tmp = {
         "ncomponents": ncomponents,
         "ncomponents_model": ncomponents_model,
-        "ncomponents_diff": ncomponents - ncomponents_model,
         "ncomponents_abs_diff": np.abs(ncomponents - ncomponents_model),
-        "recall": recall,
-        "precision": precision,
-        "f1": f1,
     }
+
+    correct_pred = labeled[np.bitwise_and(labeled > 0, img_model > 0)]
+    intersection = Counter(correct_pred)
+    union = Counter(labeled[np.bitwise_or(labeled > 0, img_model > 0)])
+    true_labels = np.unique(correct_pred)
+    ious = {}
+    for obj_label in true_labels:
+        ious[obj_label] = intersection.get(obj_label, 0.0) / union.get(obj_label, 0.01)
+
+    iou_thresholds = (0.0, 0.25, 0.5)
+    for iou_threshold in iou_thresholds:
+        tp = len([obj_label for obj_label in true_labels if ious[obj_label] > iou_threshold])
+        recall = 1.0 if ncomponents == 0 else tp / ncomponents
+        precision = 1.0 if ncomponents_model == 0 else tp / ncomponents_model
+        tmp[f"recall_{iou_threshold}"] = recall
+        tmp[f"precision_{iou_threshold}"] = precision
+        for beta in [2.0]:
+            if precision + recall == 0.0:
+                tmp[f"f1_{beta}_{iou_threshold}"] = 0.0
+            else:
+                tmp[f"f1_{beta}_{iou_threshold}"] = ((1 + beta ** 2) * precision * recall) / (
+                    beta ** 2 * precision + recall
+                )
+
     return tmp
 
 
@@ -124,7 +137,7 @@ def ssims(img_expert, img_model):
 
     img_expert, img_model  (np.ndarray) : Boolean np.ndarrays
     """
-    tmp = {"ssim": ssim(img_expert, img_model).mean(), "msssim": msssim(img_expert, img_model)}
+    tmp = {"ssim": ssim(img_expert, img_model).mean()}
     return tmp
 
 
@@ -134,7 +147,12 @@ def surface_distances(img_expert, img_model):
     robust_hausdorff = surface_distance.compute_robust_hausdorff(surface_distances, 95)
     dice_at_tolerance = surface_distance.compute_surface_dice_at_tolerance(surface_distances, tolerance_mm=1.0)
 
-    tmp = {"dist": dist, "dist": dist_inv, "robust_hausdorff": robust_hausdorff, "dice_at_tolerance": dice_at_tolerance}
+    tmp = {
+        "dist": dist,
+        "dist_inv": dist_inv,
+        "robust_hausdorff": robust_hausdorff,
+        "dice_at_tolerance": dice_at_tolerance,
+    }
     return tmp
 
 
