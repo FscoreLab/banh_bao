@@ -3,10 +3,8 @@ from PIL import Image
 from streamlit_drawable_canvas import st_canvas
 
 import streamlit as st
-
-
-def predict(orig_image, gt_mask, mask):
-    return np.round(orig_image.mean() + gt_mask.mean() + mask.mean() * 100, 0)
+from bao.train_model import CustomRegressor
+from bao.inference.predict import predict
 
 
 # Specify canvas parameters in application
@@ -49,6 +47,6 @@ if canvas_result.json_data is not None and bg_image is not None and gt_mask_file
     for res in results:
         mask[res["top"] * 2 : (res["top"] + res["height"]) * 2, res["left"] * 2 : (res["left"] + res["width"]) * 2] = 1
 
-    prediction = predict(orig_image, gt_mask, mask)
+    prediction = predict(orig_image, gt_mask.astype(bool), mask)
 
     st.markdown(f"# Prediction: {prediction}")
