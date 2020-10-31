@@ -233,13 +233,15 @@ def get_metrics(data, markup=None):
             # If there are several models with score 5, their intersection is not removed now
             if not isinstance(markup, type(None)) and tmp["id"] in markup['id'].values:
                 index = pd.Index(markup["id"]).get_loc(tmp["id"])
-                if markup["y"][index] == 5:
+                y = markup["y"][index]
+                if y == 5:
                     interest_samples = ["s1", "s2", "s3"]
                     interest_samples.remove(s_key)
                     for interest_s_key in interest_samples:
-                        tmp.update(calc_metrics(data_dict[s_key], data_dict[interest_s_key], gt=tmp["sample_name"]))
-                        out_data.append(tmp)
-                    continue
+                        interest_tmp = tmp.copy()
+                        interest_tmp.update({'y': y})
+                        interest_tmp.update(calc_metrics(data_dict[s_key], data_dict[interest_s_key], gt=tmp["sample_name"]))
+                        out_data.append(interest_tmp)
 
             tmp.update(calc_metrics(data_dict["expert"], data_dict[s_key]))
             out_data.append(tmp)
