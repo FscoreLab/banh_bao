@@ -132,6 +132,7 @@ if __name__ == "__main__":
         true_y.extend(y_tt)
         nested_score = metrics.mean_absolute_error(true_y, pred_y)
         nested_accuracy = metrics.accuracy_score(true_y, pred_y)
+        print(nested_score, nested_accuracy)
 
     nested_score = metrics.mean_absolute_error(true_y, pred_y)
     nested_accuracy = metrics.accuracy_score(true_y, pred_y)
@@ -148,7 +149,9 @@ if __name__ == "__main__":
     clf.fit(X_train, y_train, groups=df_train.fname)
     non_nested_score = -clf.best_score_
 
-    print(nested_score, nested_accuracy, non_nested_score)
+    print(
+        f"Final metrics: Nested L1 {nested_score}, Nested Accuracy {nested_accuracy}, Non-Nested L1{non_nested_score}"
+    )
 
     if args.plot_shap:
         X_tr = clf.best_estimator_.selector.transform(X_train)
