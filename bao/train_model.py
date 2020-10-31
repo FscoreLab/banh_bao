@@ -61,6 +61,16 @@ def preprocess_features(df):
     return df
 
 
+def postprocess_predictions(df):
+    df_ = df.copy()
+    df_["prediction"] = df_["prediction"].astype(np.int)
+    df_["sample_name"] = df_["id"].map(lambda x: "Sample " + x.split("_")[-1])
+    df_["Case"] = df_["id"].map(lambda x: "_".join(x.split("_")[:-1]) + ".png")
+    df_ = df_.pivot(index="Case", columns="sample_name", values="prediction")
+    df_ = df_.reset_index()
+    return df_
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train model")
 
@@ -175,6 +185,7 @@ if __name__ == "__main__":
     model = model.set_params(**clf.best_params_)
     df_train["prediction"] = cross_val_predict(model, X_train, y_train, cv=inner_cv, groups=df_train.fname)
     df_test["prediction"] = clf.predict(df_test[predictors])
+    df_test = postprocess_predictions(df_test)
 
     os.makedirs(system_config.model_dir, exist_ok=True)
 
