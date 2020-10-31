@@ -239,8 +239,8 @@ def get_metrics(data, markup=None):
                     interest_samples.remove(s_key)
                     for interest_s_key in interest_samples:
                         interest_tmp = tmp.copy()
-                        interest_tmp.update({'y': y})
                         interest_tmp.update(calc_metrics(data_dict[s_key], data_dict[interest_s_key], gt=tmp["sample_name"]))
+                        interest_tmp.update({'y': y})
                         out_data.append(interest_tmp)
 
             tmp.update(calc_metrics(data_dict["expert"], data_dict[s_key]))
