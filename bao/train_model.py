@@ -71,6 +71,7 @@ if __name__ == "__main__":
     parser.add_argument("--inner_splits", type=int, default=10, help="number of inner folds")
     parser.add_argument("--outer_splits", type=int, default=10, help="number of outer folds")
     parser.add_argument("--plot_shap", action="store_true")
+    parser.add_argument("--evaluate_with_nested_cv", action="store_true")
 
     args = parser.parse_args()
 
@@ -110,32 +111,35 @@ if __name__ == "__main__":
         "reg_lambda": [0.0, 0.1, 1.0],
     }
 
-    pred_y = []
-    true_y = []
-    for train_index, test_index in outer_cv.split(X_train, y_train, groups=df_train.fname):
-        X_tr, X_tt = X_train.iloc[train_index, :], X_train.iloc[test_index, :]
-        y_tr, y_tt = y_train.iloc[train_index], y_train.iloc[test_index]
-        groups_tt = df_train.fname.iloc[train_index]
+    nested_score = None
+    nested_accuracy = None
+    if args.evaluate_with_nested_cv:
+        pred_y = []
+        true_y = []
+        for train_index, test_index in outer_cv.split(X_train, y_train, groups=df_train.fname):
+            X_tr, X_tt = X_train.iloc[train_index, :], X_train.iloc[test_index, :]
+            y_tr, y_tt = y_train.iloc[train_index], y_train.iloc[test_index]
+            groups_tt = df_train.fname.iloc[train_index]
 
-        clf = GridSearchCV(
-            estimator=model,
-            param_grid=param_grid,
-            cv=inner_cv,
-            verbose=True,
-            n_jobs=-1,
-            scoring="neg_mean_absolute_error",
-        )
-        clf.fit(X_tr, y_tr, groups=groups_tt)
+            clf = GridSearchCV(
+                estimator=model,
+                param_grid=param_grid,
+                cv=inner_cv,
+                verbose=True,
+                n_jobs=-1,
+                scoring="neg_mean_absolute_error",
+            )
+            clf.fit(X_tr, y_tr, groups=groups_tt)
 
-        pred = clf.predict(X_tt)
-        pred_y.extend(pred)
-        true_y.extend(y_tt)
+            pred = clf.predict(X_tt)
+            pred_y.extend(pred)
+            true_y.extend(y_tt)
+            nested_score = metrics.mean_absolute_error(true_y, pred_y)
+            nested_accuracy = metrics.accuracy_score(true_y, pred_y)
+            print(nested_score, nested_accuracy)
+
         nested_score = metrics.mean_absolute_error(true_y, pred_y)
         nested_accuracy = metrics.accuracy_score(true_y, pred_y)
-        print(nested_score, nested_accuracy)
-
-    nested_score = metrics.mean_absolute_error(true_y, pred_y)
-    nested_accuracy = metrics.accuracy_score(true_y, pred_y)
 
     clf = GridSearchCV(
         estimator=model,
