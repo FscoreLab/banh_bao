@@ -14,6 +14,7 @@ from bao.metrics.ssim import ssim
 from bao.metrics.utils import *
 from scipy.ndimage.measurements import label
 from scipy.spatial.distance import directed_hausdorff
+from sklearn import metrics
 
 
 def intersection_and_union(img1, img2):
@@ -163,6 +164,18 @@ def area_features(img_expert, img_model):
     return tmp
 
 
+def pixel_accuracy_features(img_expert, img_model):
+    expert_arr = img_expert.flatten()
+    model_arr = img_model.flatten()
+    tmp = {
+        "pixel_accuracy": metrics.accuracy_score(expert_arr, model_arr),
+        "pixel_recall": metrics.recall_score(expert_arr, model_arr),
+        "pixel_precision": metrics.precision_score(expert_arr, model_arr),
+        "pixel_f1": metrics.f1_score(expert_arr, model_arr)
+    }
+    return tmp
+
+
 def area_out_of_lungs(img_origin, img_expert, img_model):
     # Calculate part of mask out from lungs
     lungs_mask_union = lungs_finder_segmentator(img_origin)
@@ -260,7 +273,7 @@ def _add_key_postfix(dictionary, postfix):
     return new_dict
 
 
-def calc_metrics(data_expert, data_nn, data_orig, form_dict=None, gt='expert'):
+def calc_metrics(data_expert, data_nn, data_orig, form_dict=None, gt="expert"):
     tmp = {"gt": gt}
     if form_dict:
         form_mode = "original"
@@ -275,6 +288,7 @@ def calc_metrics(data_expert, data_nn, data_orig, form_dict=None, gt='expert'):
         "area_features",
         "area_out_of_lungs",
         "positional_features",
+        "pixel_accuracy_features"
     ]:
         if metric in [
             "inter_over_metrics",
@@ -284,6 +298,7 @@ def calc_metrics(data_expert, data_nn, data_orig, form_dict=None, gt='expert'):
             "accuracy_features",
             "surface_distances",
             "area_features",
+            "pixel_accuracy_features"
         ]:
             tmp.update(eval(metric)(data_expert, data_nn))
 
@@ -349,18 +364,24 @@ def get_metrics(data, markup=None, form_mode="original"):
 
             # Check similarity of scores and generate new features if exist model having score 5
             # If there are several models with score 5, their intersection is not removed now
-            if not isinstance(markup, type(None)) and tmp["id"] in markup['id'].values:
+            if not isinstance(markup, type(None)) and tmp["id"] in markup["id"].values:
                 index = pd.Index(markup["id"]).get_loc(tmp["id"])
                 y = markup["y"][index]
-                tmp.update({'y': y})
+                tmp.update({"y": y})
                 if y == 5:
                     interest_samples = ["s1", "s2", "s3"]
                     interest_samples.remove(s_key)
                     for interest_s_key in interest_samples:
                         interest_tmp = tmp.copy()
                         interest_tmp.update(
-                            calc_metrics(data_dict[s_key], data_dict[interest_s_key], data_dict["orig"], form_dict,
-                                         gt=tmp["sample_name"]))
+                            calc_metrics(
+                                data_dict[s_key],
+                                data_dict[interest_s_key],
+                                data_dict["orig"],
+                                form_dict,
+                                gt=tmp["sample_name"],
+                            )
+                        )
                         out_data.append(interest_tmp)
 
             tmp.update(calc_metrics(data_dict["expert"], data_dict[s_key], data_dict["orig"], form_dict))
