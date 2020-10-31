@@ -12,8 +12,7 @@ from scipy.spatial.distance import directed_hausdorff
 
 from bao.config import system_config
 from bao.metrics.ssim import msssim, ssim
-from bao.metrics.lungs_segmentator import lungs_finder_segmentator, area_out_of
-
+from bao.metrics.utils import *
 
 def intersection_and_union(img1, img2):
     """
@@ -161,6 +160,38 @@ def area_out_of_lungs(img_origin, img_expert, img_model):
     return tmp
 
 
+def positional_features(img_origin, img_expert, img_model):
+
+    lungs_mask_union = np.array(lungs_finder_segmentator(img_origin), dtype=np.uint8)
+    img_expert = img_expert.astype(np.uint8)
+    img_model = img_model.astype(np.uint8)
+
+    x_e, y_e = get_center_of_mass(img_expert)
+    x_m, y_m = get_center_of_mass(img_model)
+    x_l, y_l = get_center_of_mass(lungs_mask_union)
+
+    centers_e = get_centers_of_mass(img_expert)
+    centers_m = get_centers_of_mass(img_model)
+
+    dists = get_nearest_neighbor_dist(centers_e, centers_m)
+    w, h = get_lungs_size(img_origin)
+    max_dist = (w**2 + h**2)**0.5
+
+    mean_centroid_dist = np.mean(dists) / max_dist if len(dists) > 0 else 0
+    max_centroid_dist = np.max(dists) / max_dist if len(dists) > 0 else 0
+    min_centroid_dist = np.min(dists) / max_dist if len(dists) > 0 else 0
+    
+    tmp = {
+        "x_diff_center": np.abs(x_m - x_e) / w,
+        "y_diff_center": np.abs(y_m - y_e) / h,
+        "x_diff_center_lungs": np.abs(x_l - x_m) / w,
+        "y_diff_center_lungs": np.abs(y_l - y_m) / h,
+        "mean_centroid_dist": mean_centroid_dist,
+        "max_centroid_dist": max_centroid_dist,
+        "min_centroid_dist": min_centroid_dist,
+    }
+    return tmp
+
 def _read_png(fpath):
     return cv2.imread(fpath)[:, :, ::-1]
 
@@ -230,6 +261,7 @@ def get_metrics(data):
                 "surface_distances",
                 "area_features",
                 "area_out_of_lungs",
+                "positional_features",
             ]:
                 if metric in [
                     "inter_over_metrics",
@@ -243,7 +275,8 @@ def get_metrics(data):
                     tmp.update(eval(metric)(data_dict["expert"], data_dict[s_key]))
 
                 if metric in [
-                    "area_out_of_lungs"
+                    "area_out_of_lungs",
+                    "positional_features"
                 ]:
                     tmp.update(eval(metric)(data_dict["orig"], data_dict["expert"], data_dict[s_key]))
 

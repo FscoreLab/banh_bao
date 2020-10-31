@@ -21,8 +21,9 @@ scikit_learn==0.21.3
 git+https://github.com/Miffka/gradcam_plus_plus-pytorch.git@00197295f3e5454bd61f820d503b6e3a53278a9c
 git+https://github.com/FscoreLab/lungs-finder.git
 git+https://github.com/FscoreLab/surface-distance.git
-streaming-form-data==1.5.2
+streaming-form-data
 gunicorn==20.0.4
 gevent==1.4.0
 SimpleITK==1.2.4
 seaborn==0.11.0
+lungs-finder
