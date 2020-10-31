@@ -1,6 +1,7 @@
 import argparse
 import os
 import os.path as osp
+from collections import Counter
 
 import cv2
 import numpy as np
@@ -11,8 +12,10 @@ from scipy.ndimage.measurements import label
 from scipy.spatial.distance import directed_hausdorff
 
 from bao.config import system_config
-from bao.metrics.ssim import msssim, ssim
 from bao.metrics.utils import *
+from bao.metrics.ssim import ssim
+from bao.metrics import mask_utils
+
 
 def intersection_and_union(img1, img2):
     """
@@ -83,23 +86,32 @@ def accuracy_features(img_expert, img_model):
     labeled, ncomponents = label(img_expert, structure)
     labeled_model, ncomponents_model = label(img_model, structure)
 
-    tp = len(np.unique(labeled[np.bitwise_and(labeled > 0, img_model > 0)]))
-    recall = np.nan if ncomponents == 0 else tp / ncomponents
-    precision = np.nan if ncomponents_model == 0 else tp / ncomponents_model
-    if precision + recall == 0.0:
-        f1 = 0.0
-    else:
-        f1 = (2 * precision * recall) / (precision + recall)
-
     tmp = {
         "ncomponents": ncomponents,
         "ncomponents_model": ncomponents_model,
-        "ncomponents_diff": ncomponents - ncomponents_model,
         "ncomponents_abs_diff": np.abs(ncomponents - ncomponents_model),
-        "recall": recall,
-        "precision": precision,
-        "f1": f1,
     }
+
+    correct_pred = labeled[np.bitwise_and(labeled > 0, img_model > 0)]
+    intersection = Counter(correct_pred)
+    union = Counter(labeled[np.bitwise_or(labeled > 0, img_model > 0)])
+    true_labels = np.unique(correct_pred)
+    ious = {}
+    for obj_label in true_labels:
+        ious[obj_label] = intersection.get(obj_label, 0.0) / union.get(obj_label, 0.01)
+
+    iou_thresholds = (0.0, 0.25, 0.5)
+    for iou_threshold in iou_thresholds:
+        tp = len([obj_label for obj_label in true_labels if ious[obj_label] > iou_threshold])
+        recall = 1.0 if ncomponents == 0 else tp / ncomponents
+        precision = 1.0 if ncomponents_model == 0 else tp / ncomponents_model
+        tmp[f"recall_{iou_threshold}"] = recall
+        tmp[f"precision_{iou_threshold}"] = precision
+        if precision + recall == 0.0:
+            tmp[f"f1_{iou_threshold}"] = 0.0
+        else:
+            tmp[f"f1_{iou_threshold}"] = (2 * precision * recall) / (precision + recall)
+
     return tmp
 
 
@@ -124,7 +136,7 @@ def ssims(img_expert, img_model):
 
     img_expert, img_model  (np.ndarray) : Boolean np.ndarrays
     """
-    tmp = {"ssim": ssim(img_expert, img_model).mean(), "msssim": msssim(img_expert, img_model)}
+    tmp = {"ssim": ssim(img_expert, img_model).mean()}
     return tmp
 
 
@@ -134,7 +146,12 @@ def surface_distances(img_expert, img_model):
     robust_hausdorff = surface_distance.compute_robust_hausdorff(surface_distances, 95)
     dice_at_tolerance = surface_distance.compute_surface_dice_at_tolerance(surface_distances, tolerance_mm=1.0)
 
-    tmp = {"dist": dist, "dist": dist_inv, "robust_hausdorff": robust_hausdorff, "dice_at_tolerance": dice_at_tolerance}
+    tmp = {
+        "dist": dist,
+        "dist_inv": dist_inv,
+        "robust_hausdorff": robust_hausdorff,
+        "dice_at_tolerance": dice_at_tolerance,
+    }
     return tmp
 
 
@@ -230,7 +247,18 @@ def prepare_markup(fpath):
     return markup[["id", "y"]]
 
 
-def get_metrics(data):
+def _add_key_postfix(dictionary, postfix):
+    """
+    Adds postfix to every key in dictionary
+    """
+    key_pairs = {old_key: f"{old_key}{postfix}" for old_key in list(dictionary.keys())}
+    new_dict = {}
+    for old_key, value in dictionary.items():
+        new_dict[key_pairs[old_key]] = value
+    return new_dict
+
+
+def get_metrics(data, form_mode="original"):
     """
     Arguments
     ---------
@@ -240,11 +268,26 @@ def get_metrics(data):
                     "orig": RGB 3-channel image,
                     "expert", "m_1", "m_2", "m_3": 2D boolean arrays
                     }
+    form_mode   (str) : If `original`, add features for ellipses and 
+                        rectangles for selected metrics, if `rect` - 
+                        generate features for rectangle masks, 
+                        if `ellipse` - generate features for ellipsoid masks
     """
 
     out_data = []
     sample_name_dict = {"s1": "1", "s2": "2", "s3": "3"}
     for data_dict in tqdm.tqdm(data, desc="Generating metrics"):
+        if form_mode in ["rect", "ellipse"]:
+            for markup_key in ["expert", "s1", "s2", "s3"]:
+                if form_mode == "rect":
+                    data_dict[markup_key] = mask_utils.convert_to_rectangles(data_dict[markup_key])
+                elif form_mode == "ellipse":
+                    data_dict[markup_key] = mask_utils.convert_to_ellipses(data_dict[markup_key])
+
+        if form_mode == "original":
+            expert_ellipse = mask_utils.convert_to_ellipses(data_dict["expert"])
+            expert_rect = mask_utils.convert_to_rectangles(data_dict["expert"])
+
         for s_key in ["s1", "s2", "s3"]:
 
             tmp = {
@@ -252,6 +295,11 @@ def get_metrics(data):
                 "fname": data_dict["fname"],
                 "sample_name": sample_name_dict[s_key],
             }
+
+            if form_mode == "original":
+                model_ellipse = mask_utils.convert_to_ellipses(data_dict[s_key])
+                model_rect = mask_utils.convert_to_rectangles(data_dict[s_key])
+
             for metric in [
                 "inter_over_metrics",
                 "binary_feature",
@@ -280,6 +328,14 @@ def get_metrics(data):
                 ]:
                     tmp.update(eval(metric)(data_dict["orig"], data_dict["expert"], data_dict[s_key]))
 
+                if metric in ["inter_over_metrics", "hausdorff_distance"] and form_mode == "original":
+                    tmp_tmp = eval(metric)(expert_ellipse, model_ellipse)
+                    tmp_tmp = _add_key_postfix(tmp_tmp, "_el")
+                    tmp.update(tmp_tmp)
+                    tmp_tmp = eval(metric)(expert_rect, model_rect)
+                    tmp_tmp = _add_key_postfix(tmp_tmp, "_rect")
+                    tmp.update(tmp_tmp)
+
             out_data.append(tmp)
 
     return pd.DataFrame(out_data)
@@ -298,6 +354,13 @@ if __name__ == "__main__":
 
     parser.add_argument("--markup", default=osp.join(system_config.data_dir, "Dataset", "OpenPart.csv"))
     parser.add_argument("--add_markup", action="store_true")
+    parser.add_argument(
+        "--form_mode",
+        default="original",
+        help="If `original`, add features for ellipses and rectangles for selected "
+        + "metrics, if `rect` generate features for rectangle masks, if `ellipse`"
+        + " generate features for ellipsoid masks",
+    )
 
     parser.add_argument("--output_dir", default=osp.join(system_config.data_dir, "interim"))
 
@@ -306,7 +369,7 @@ if __name__ == "__main__":
     output_file = osp.join(args.output_dir, f"{args.task_name}.csv")
 
     data = read_files(args)
-    metrics = get_metrics(data)
+    metrics = get_metrics(data, form_mode=args.form_mode)
 
     if args.add_markup:
         markup = prepare_markup(args.markup)
