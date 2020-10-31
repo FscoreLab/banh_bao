@@ -14,7 +14,7 @@ pandas==1.1.4
 tqdm==4.32.2
 boto3==1.9.188
 botocore==1.12.188
-Pillow==8.1.0
+Pillow==8.0.1
 python-dotenv==0.10.3
 scikit-image==0.17.2
 scikit_learn==0.21.3

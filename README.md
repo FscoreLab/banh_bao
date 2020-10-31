@@ -17,8 +17,16 @@ pip install -e .
 
 ### Gather metrics from markup
 
-```
+```bash
 python bao/metrics/run_metrics.py --add_markup
+```
+
+### Split any dataframe with "fname" column
+
+```python
+from bao.utils import split_df
+
+split_df(df)
 ```
 
 To be continued ...
