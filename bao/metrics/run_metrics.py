@@ -214,7 +214,7 @@ def prepare_markup(fpath):
     return markup[["id", "y"]]
 
 
-def get_metrics(data):
+def get_metrics(data, form_mode="original"):
     """
     Arguments
     ---------
@@ -280,6 +280,12 @@ if __name__ == "__main__":
 
     parser.add_argument("--markup", default=osp.join(system_config.data_dir, "Dataset", "OpenPart.csv"))
     parser.add_argument("--add_markup", action="store_true")
+    parser.add_argument(
+        "--form_mode",
+        default="original",
+        help="If `original`, add features for ellipses and rectangles for selected "
+        + "metrics, if `rect` generate features for rectangle masks, if `el` generate features for ellipsoid masks",
+    )
 
     parser.add_argument("--output_dir", default=osp.join(system_config.data_dir, "interim"))
 
@@ -288,7 +294,7 @@ if __name__ == "__main__":
     output_file = osp.join(args.output_dir, f"{args.task_name}.csv")
 
     data = read_files(args)
-    metrics = get_metrics(data)
+    metrics = get_metrics(data, form_mode=args.form_mode)
 
     if args.add_markup:
         markup = prepare_markup(args.markup)
