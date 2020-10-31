@@ -4,6 +4,11 @@ from streamlit_drawable_canvas import st_canvas
 
 import streamlit as st
 
+
+def predict(orig_image, gt_mask, mask):
+    return np.round(orig_image.mean() + gt_mask.mean() + mask.mean() * 100, 0)
+
+
 # Specify canvas parameters in application
 stroke_width = 3
 stroke_color = "black"
@@ -39,12 +44,11 @@ canvas_result = st_canvas(
 )
 
 if canvas_result.json_data is not None and bg_image is not None and gt_mask_file is not None:
-    # Insert prediction generation here
     results = canvas_result.json_data["objects"]
     mask = np.zeros((1024, 1024), dtype=bool)
     for res in results:
         mask[res["top"] * 2 : (res["top"] + res["height"]) * 2, res["left"] * 2 : (res["left"] + res["width"]) * 2] = 1
 
-    # predict here (mask, gt_mask, orig_image)
+    prediction = predict(orig_image, gt_mask, mask)
 
-    st.markdown("# 5")
+    st.markdown(f"# Prediction: {prediction}")

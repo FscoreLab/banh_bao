@@ -78,13 +78,14 @@ if __name__ == "__main__":
     random.seed(24)
 
     df = pd.read_csv(osp.join(system_config.data_dir, "interim", "sample.csv"))
+    df = df.loc[df["gt"] == "expert"]
     df_torch = pd.read_csv(osp.join(system_config.data_dir, "interim", "model_torchxray.csv"))
     df_torch.drop(["gt_sum", "gt_sum_pos"], axis=1, inplace=True, errors="ignore")
 
     df = pd.merge(df, df_torch, on="fname")
     df = preprocess_features(df)
 
-    predictors = [col for col in df.columns if col not in ["id", "fname", "sample_name", "y", "Unnamed: 0"]]
+    predictors = [col for col in df.columns if col not in ["id", "fname", "sample_name", "y", "Unnamed: 0", "gt"]]
 
     df[predictors] = df[predictors].fillna(0.0)
     df[predictors] = df[predictors].replace([np.inf], 100000.0)

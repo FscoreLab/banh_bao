@@ -293,11 +293,11 @@ def calc_metrics(data_expert, data_nn, data_orig, form_dict=None, gt='expert'):
         ]:
             tmp.update(eval(metric)(data_orig, data_expert, data_nn))
 
-        if metric in ["inter_over_metrics", "hausdorff_distance"] and form_mode == "original":
-            tmp_tmp = eval(metric)(form_dict["expert_ellipse"], form_dict["model_ellipse"])
+        if metric in ["inter_over_metrics"] and form_mode == "original":
+            tmp_tmp = eval(metric)(form_dict["expert_ellipse"], form_dict["model_ellipse"], single_metric=True)
             tmp_tmp = _add_key_postfix(tmp_tmp, "_el")
             tmp.update(tmp_tmp)
-            tmp_tmp = eval(metric)(form_dict["expert_rect"], form_dict["model_rect"])
+            tmp_tmp = eval(metric)(form_dict["expert_rect"], form_dict["model_rect"], single_metric=True)
             tmp_tmp = _add_key_postfix(tmp_tmp, "_rect")
             tmp.update(tmp_tmp)
 
