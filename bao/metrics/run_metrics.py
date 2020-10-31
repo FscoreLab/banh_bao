@@ -226,20 +226,62 @@ def _add_key_postfix(dictionary, postfix):
     return new_dict
 
 
-def get_metrics(data, form_mode="original"):
+def calc_metrics(data_expert, data_nn, data_orig, form_dict=None, gt='expert'):
+    tmp = {"gt": gt}
+    if form_dict:
+        form_mode = "original"
+
+    for metric in [
+        "inter_over_metrics",
+        "binary_feature",
+        "hausdorff_distance",
+        "ssims",
+        "accuracy_features",
+        "surface_distances",
+        "area_features",
+        "area_out_of_lungs",
+    ]:
+        if metric in [
+            "inter_over_metrics",
+            "binary_feature",
+            "hausdorff_distance",
+            "ssims",
+            "accuracy_features",
+            "surface_distances",
+            "area_features",
+        ]:
+            tmp.update(eval(metric)(data_expert, data_nn))
+
+        if metric in [
+            "area_out_of_lungs"
+        ]:
+            tmp.update(eval(metric)(data_orig, data_expert, data_nn))
+
+        if metric in ["inter_over_metrics", "hausdorff_distance"] and form_mode == "original":
+            tmp_tmp = eval(metric)(form_dict["expert_ellipse"], form_dict["model_ellipse"])
+            tmp_tmp = _add_key_postfix(tmp_tmp, "_el")
+            tmp.update(tmp_tmp)
+            tmp_tmp = eval(metric)(form_dict["expert_rect"], form_dict["model_rect"])
+            tmp_tmp = _add_key_postfix(tmp_tmp, "_rect")
+            tmp.update(tmp_tmp)
+
+    return tmp
+
+
+def get_metrics(data, markup=None, form_mode="original"):
     """
     Arguments
     ---------
 
     data    (list) : list of dicts {
-                    "fname": str,
+                    "fname": str, 
                     "orig": RGB 3-channel image,
                     "expert", "m_1", "m_2", "m_3": 2D boolean arrays
                     }
-    form_mode   (str) : If `original`, add features for ellipses and 
-                        rectangles for selected metrics, if `rect` - 
-                        generate features for rectangle masks, 
-                        if `ellipse` - generate features for ellipsoid masks
+    form_mode   (str) : If `original`, add features for ellipses and
+                    rectangles for selected metrics, if `rect` -
+                    generate features for rectangle masks,
+                    if `ellipse` - generate features for ellipsoid masks
     """
 
     out_data = []
@@ -252,9 +294,10 @@ def get_metrics(data, form_mode="original"):
                 elif form_mode == "ellipse":
                     data_dict[markup_key] = mask_utils.convert_to_ellipses(data_dict[markup_key])
 
+        form_dict = {}
         if form_mode == "original":
-            expert_ellipse = mask_utils.convert_to_ellipses(data_dict["expert"])
-            expert_rect = mask_utils.convert_to_rectangles(data_dict["expert"])
+            form_dict["expert_ellipse"] = mask_utils.convert_to_ellipses(data_dict["expert"])
+            form_dict["expert_rect"] = mask_utils.convert_to_rectangles(data_dict["expert"])
 
         for s_key in ["s1", "s2", "s3"]:
 
@@ -265,43 +308,26 @@ def get_metrics(data, form_mode="original"):
             }
 
             if form_mode == "original":
-                model_ellipse = mask_utils.convert_to_ellipses(data_dict[s_key])
-                model_rect = mask_utils.convert_to_rectangles(data_dict[s_key])
+                form_dict["model_ellipse"] = mask_utils.convert_to_ellipses(data_dict[s_key])
+                form_dict["model_rect"] = mask_utils.convert_to_rectangles(data_dict[s_key])
 
-            for metric in [
-                "inter_over_metrics",
-                "binary_feature",
-                "hausdorff_distance",
-                "ssims",
-                "accuracy_features",
-                "surface_distances",
-                "area_features",
-                "area_out_of_lungs",
-            ]:
-                if metric in [
-                    "inter_over_metrics",
-                    "binary_feature",
-                    "hausdorff_distance",
-                    "ssims",
-                    "accuracy_features",
-                    "surface_distances",
-                    "area_features",
-                ]:
-                    tmp.update(eval(metric)(data_dict["expert"], data_dict[s_key]))
+            # Check similarity of scores and generate new features if exist model having score 5
+            # If there are several models with score 5, their intersection is not removed now
+            if not isinstance(markup, type(None)) and tmp["id"] in markup['id'].values:
+                index = pd.Index(markup["id"]).get_loc(tmp["id"])
+                y = markup["y"][index]
+                tmp.update({'y': y})
+                if y == 5:
+                    interest_samples = ["s1", "s2", "s3"]
+                    interest_samples.remove(s_key)
+                    for interest_s_key in interest_samples:
+                        interest_tmp = tmp.copy()
+                        interest_tmp.update(
+                            calc_metrics(data_dict[s_key], data_dict[interest_s_key], data_dict["orig"], form_dict,
+                                         gt=tmp["sample_name"]))
+                        out_data.append(interest_tmp)
 
-                if metric in [
-                    "area_out_of_lungs"
-                ]:
-                    tmp.update(eval(metric)(data_dict["orig"], data_dict["expert"], data_dict[s_key]))
-
-                if metric in ["inter_over_metrics", "hausdorff_distance"] and form_mode == "original":
-                    tmp_tmp = eval(metric)(expert_ellipse, model_ellipse)
-                    tmp_tmp = _add_key_postfix(tmp_tmp, "_el")
-                    tmp.update(tmp_tmp)
-                    tmp_tmp = eval(metric)(expert_rect, model_rect)
-                    tmp_tmp = _add_key_postfix(tmp_tmp, "_rect")
-                    tmp.update(tmp_tmp)
-
+            tmp.update(calc_metrics(data_dict["expert"], data_dict[s_key], data_dict["orig"], form_dict))
             out_data.append(tmp)
 
     return pd.DataFrame(out_data)
@@ -335,11 +361,12 @@ if __name__ == "__main__":
     output_file = osp.join(args.output_dir, f"{args.task_name}.csv")
 
     data = read_files(args)
-    metrics = get_metrics(data, form_mode=args.form_mode)
 
     if args.add_markup:
         markup = prepare_markup(args.markup)
-        metrics = pd.merge(metrics, markup, how="left", on="id")
+        metrics = get_metrics(data, markup, form_mode=args.form_mode)
+    else:
+        metrics = get_metrics(data, form_mode=args.form_mode)
 
     os.makedirs(args.output_dir, exist_ok=True)
     metrics.to_csv(output_file, index=False)
