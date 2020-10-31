@@ -2,7 +2,6 @@ import numpy as np
 import streamlit as st
 from streamlit_drawable_canvas import st_canvas
 from PIL import Image
-import cv2
 
 # Specify canvas parameters in application
 stroke_width = 3
@@ -17,11 +16,12 @@ image = None
 if bg_image and gt_mask_file:
     gt_mask = np.array(Image.open(gt_mask_file))
     orig_image = np.array(Image.open(bg_image))
-    image = np.stack((orig_image,) * 3, axis=-1)
+    image = np.uint8(np.stack((orig_image,) * 3, axis=-1))
     mask_red = np.zeros(image.shape)
     mask_red[:, :] = (255, 0, 0)
     mask_red = np.uint8(mask_red * gt_mask[:, :, np.newaxis])
-    image = cv2.addWeighted(mask_red, 0.5, image, 1, 0, image)
+    image[mask_red > 0] = image[mask_red > 0] * 0.5 + mask_red[mask_red > 0] * 0.5
+    image = Image.fromarray(image)
 
 # Create a canvas component
 canvas_result = st_canvas(
