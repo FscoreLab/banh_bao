@@ -72,3 +72,35 @@ def draw_ellipses(objs, shape):
         cv2.ellipse(img, obj["el"][0], obj["el"][1], 0, 0, 360, 1, -1)
     img = img.astype(np.bool)
     return img
+
+
+def convert_to_rectangles(img):
+    """
+    Arguments
+    ---------
+    img     (np.ndarray) : Boolean array
+
+    Returns
+    -------
+    img     (np.ndarray) : Boolean array where every mask is rectangle
+    """
+    objs = get_objects(img)
+    shape = img.shape
+    img_out = draw_rectangles(objs, shape)
+    return img_out
+
+
+def convert_to_ellipses(img):
+    """
+    Arguments
+    ---------
+    img     (np.ndarray) : Boolean array
+
+    Returns
+    -------
+    img     (np.ndarray) : Boolean array where every mask is ellipse
+    """
+    objs = get_objects(img)
+    shape = img.shape
+    img_out = draw_ellipses(objs, shape)
+    return img_out

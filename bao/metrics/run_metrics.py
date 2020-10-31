@@ -14,6 +14,7 @@ from scipy.spatial.distance import directed_hausdorff
 from bao.config import system_config
 from bao.metrics.ssim import ssim
 from bao.metrics.lungs_segmentator import lungs_finder_segmentator, area_out_of
+from bao.metrics import mask_utils
 
 
 def intersection_and_union(img1, img2):
@@ -214,6 +215,17 @@ def prepare_markup(fpath):
     return markup[["id", "y"]]
 
 
+def _add_key_postfix(dictionary, postfix):
+    """
+    Adds postfix to every key in dictionary
+    """
+    key_pairs = {old_key: f"{old_key}{postfix}" for old_key in list(dictionary.keys())}
+    new_dict = {}
+    for old_key, value in dictionary.items():
+        new_dict[key_pairs[old_key]] = value
+    return new_dict
+
+
 def get_metrics(data, form_mode="original"):
     """
     Arguments
@@ -224,11 +236,26 @@ def get_metrics(data, form_mode="original"):
                     "orig": RGB 3-channel image,
                     "expert", "m_1", "m_2", "m_3": 2D boolean arrays
                     }
+    form_mode   (str) : If `original`, add features for ellipses and 
+                        rectangles for selected metrics, if `rect` - 
+                        generate features for rectangle masks, 
+                        if `ellipse` - generate features for ellipsoid masks
     """
 
     out_data = []
     sample_name_dict = {"s1": "1", "s2": "2", "s3": "3"}
     for data_dict in tqdm.tqdm(data, desc="Generating metrics"):
+        if form_mode in ["rect", "ellipse"]:
+            for markup_key in ["expert", "s1", "s2", "s3"]:
+                if form_mode == "rect":
+                    data_dict[markup_key] = mask_utils.convert_to_rectangles(data_dict[markup_key])
+                elif form_mode == "ellipse":
+                    data_dict[markup_key] = mask_utils.convert_to_ellipses(data_dict[markup_key])
+
+        if form_mode == "original":
+            expert_ellipse = mask_utils.convert_to_ellipses(data_dict["expert"])
+            expert_rect = mask_utils.convert_to_rectangles(data_dict["expert"])
+
         for s_key in ["s1", "s2", "s3"]:
 
             tmp = {
@@ -236,6 +263,11 @@ def get_metrics(data, form_mode="original"):
                 "fname": data_dict["fname"],
                 "sample_name": sample_name_dict[s_key],
             }
+
+            if form_mode == "original":
+                model_ellipse = mask_utils.convert_to_ellipses(data_dict[s_key])
+                model_rect = mask_utils.convert_to_rectangles(data_dict[s_key])
+
             for metric in [
                 "inter_over_metrics",
                 "binary_feature",
@@ -262,6 +294,14 @@ def get_metrics(data, form_mode="original"):
                 ]:
                     tmp.update(eval(metric)(data_dict["orig"], data_dict["expert"], data_dict[s_key]))
 
+                if metric in ["inter_over_metrics", "hausdorff_distance"] and form_mode == "original":
+                    tmp_tmp = eval(metric)(expert_ellipse, model_ellipse)
+                    tmp_tmp = _add_key_postfix(tmp_tmp, "_el")
+                    tmp.update(tmp_tmp)
+                    tmp_tmp = eval(metric)(expert_rect, model_rect)
+                    tmp_tmp = _add_key_postfix(tmp_tmp, "_rect")
+                    tmp.update(tmp_tmp)
+
             out_data.append(tmp)
 
     return pd.DataFrame(out_data)
@@ -284,7 +324,8 @@ if __name__ == "__main__":
         "--form_mode",
         default="original",
         help="If `original`, add features for ellipses and rectangles for selected "
-        + "metrics, if `rect` generate features for rectangle masks, if `el` generate features for ellipsoid masks",
+        + "metrics, if `rect` generate features for rectangle masks, if `ellipse`"
+        + " generate features for ellipsoid masks",
     )
 
     parser.add_argument("--output_dir", default=osp.join(system_config.data_dir, "interim"))
