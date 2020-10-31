@@ -176,7 +176,7 @@ if __name__ == "__main__":
     df_train["prediction"] = cross_val_predict(model, X_train, y_train, cv=inner_cv, groups=df_train.fname)
     df_test["prediction"] = clf.predict(df_test[predictors])
 
-    os.makedirs(osp.join(system_config.data_dir, "processed"), exist_ok=True)
+    os.makedirs(system_config.model_dir, exist_ok=True)
 
     df_train[["id", "prediction", "y"]].to_csv(
         osp.join(system_config.data_dir, "processed", "train_predictions.csv"), index=False
@@ -185,5 +185,5 @@ if __name__ == "__main__":
         osp.join(system_config.data_dir, "processed", "test_predictions.csv"), index=False
     )
 
-    with open(osp.join(system_config.data_dir, "processed", "model.pkl"), "wb") as fout:
+    with open(osp.join(system_config.model_dir, "model.pkl"), "wb") as fout:
         pickle.dump(clf.best_estimator_, fout)
