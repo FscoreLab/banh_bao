@@ -105,13 +105,10 @@ def accuracy_features(img_expert, img_model):
         precision = 1.0 if ncomponents_model == 0 else tp / ncomponents_model
         tmp[f"recall_{iou_threshold}"] = recall
         tmp[f"precision_{iou_threshold}"] = precision
-        for beta in [2.0]:
-            if precision + recall == 0.0:
-                tmp[f"f1_{beta}_{iou_threshold}"] = 0.0
-            else:
-                tmp[f"f1_{beta}_{iou_threshold}"] = ((1 + beta ** 2) * precision * recall) / (
-                    beta ** 2 * precision + recall
-                )
+        if precision + recall == 0.0:
+            tmp[f"f1_{iou_threshold}"] = 0.0
+        else:
+            tmp[f"f1_{iou_threshold}"] = (2 * precision * recall) / (precision + recall)
 
     return tmp
 
