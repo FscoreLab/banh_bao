@@ -9,7 +9,7 @@ Pillow==8.0.1
 python-dotenv==0.10.3
 scikit-image==0.17.2
 shap==0.36.0
-scikit_learn==0.21.3
+scikit_learn==0.23.2
 streamlit==0.70.0
 streamlit_drawable_canvas
 git+https://github.com/Miffka/gradcam_plus_plus-pytorch.git@00197295f3e5454bd61f820d503b6e3a53278a9c

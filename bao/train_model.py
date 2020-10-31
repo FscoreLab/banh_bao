@@ -11,11 +11,7 @@ import shap
 from sklearn import metrics
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.feature_selection import SelectKBest, mutual_info_regression
-from sklearn.model_selection import (
-    GridSearchCV,
-    GroupKFold,
-    cross_val_predict,
-)
+from sklearn.model_selection import GridSearchCV, GroupKFold, cross_val_predict
 
 from bao.config import system_config
 
@@ -72,6 +68,7 @@ if __name__ == "__main__":
     parser.add_argument("--outer_splits", type=int, default=10, help="number of outer folds")
     parser.add_argument("--plot_shap", action="store_true")
     parser.add_argument("--evaluate_with_nested_cv", action="store_true")
+    parser.add_argument("--tune_parameters", action="store_true")
 
     args = parser.parse_args()
 
@@ -101,15 +98,26 @@ if __name__ == "__main__":
     outer_cv = GroupKFold(n_splits=args.outer_splits)
 
     model = CustomRegressor()
-    param_grid = {
-        "n_estimators": [50, 100, 200, 300],
-        "colsample_bytree": [0.25, 0.5, 0.75, 1.0],
-        "min_child_samples": [1, 3, 5, 10],
-        "num_leaves": [5, 7, 15, 31],
-        "k": [15, 30, len(predictors)],
-        "reg_alpha": [0.0, 0.1, 1.0],
-        "reg_lambda": [0.0, 0.1, 1.0],
-    }
+    if args.tune_parameters:
+        param_grid = {
+            "n_estimators": [50, 100, 200, 300],
+            "colsample_bytree": [0.25, 0.5, 0.75, 1.0],
+            "min_child_samples": [1, 3, 5, 10],
+            "num_leaves": [5, 7, 15, 31],
+            "k": [15, 30, len(predictors)],
+            "reg_alpha": [0.0, 0.1, 1.0],
+            "reg_lambda": [0.0, 0.1, 1.0],
+        }
+    else:
+        param_grid = {
+            "n_estimators": [300],
+            "colsample_bytree": [0.75],
+            "min_child_samples": [1],
+            "num_leaves": [5],
+            "k": [len(predictors)],
+            "reg_alpha": [0.0],
+            "reg_lambda": [1.0],
+        }
 
     nested_score = None
     nested_accuracy = None
@@ -154,7 +162,7 @@ if __name__ == "__main__":
     non_nested_score = -clf.best_score_
 
     print(
-        f"Final metrics: Nested L1 {nested_score}, Nested Accuracy {nested_accuracy}, Non-Nested L1{non_nested_score}"
+        f"Final metrics: Nested L1 {nested_score}, Nested Accuracy {nested_accuracy}, Non-Nested L1 {non_nested_score}"
     )
 
     if args.plot_shap:
