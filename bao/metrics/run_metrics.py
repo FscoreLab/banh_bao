@@ -13,6 +13,7 @@ from scipy.spatial.distance import directed_hausdorff
 
 from bao.config import system_config
 from bao.metrics.ssim import ssim
+from bao.metrics.lungs_segmentator import lungs_finder_segmentator, area_out_of
 
 
 def intersection_and_union(img1, img2):
@@ -163,6 +164,21 @@ def area_features(img_expert, img_model):
     return tmp
 
 
+def area_out_of_lungs(img_origin, img_expert, img_model):
+    # Calculate part of mask out from lungs
+    lungs_mask_union = lungs_finder_segmentator(img_origin)
+    out_of_lungs_union = area_out_of(lungs_mask_union, img_model)
+
+    lungs_mask_lr = lungs_finder_segmentator(img_origin, is_union=False)
+    out_of_lungs_lr = area_out_of(lungs_mask_lr, img_model)
+
+    tmp = {
+        "out_of_lungs_lr": out_of_lungs_lr,
+        "out_of_lungs_union": out_of_lungs_union,
+    }
+    return tmp
+
+
 def _read_png(fpath):
     return cv2.imread(fpath)[:, :, ::-1]
 
@@ -207,7 +223,7 @@ def get_metrics(data):
     ---------
 
     data    (list) : list of dicts {
-                    "fname": str, 
+                    "fname": str,
                     "orig": RGB 3-channel image,
                     "expert", "m_1", "m_2", "m_3": 2D boolean arrays
                     }
@@ -231,6 +247,7 @@ def get_metrics(data):
                 "accuracy_features",
                 "surface_distances",
                 "area_features",
+                "area_out_of_lungs",
             ]:
                 if metric in [
                     "inter_over_metrics",
@@ -242,6 +259,12 @@ def get_metrics(data):
                     "area_features",
                 ]:
                     tmp.update(eval(metric)(data_dict["expert"], data_dict[s_key]))
+
+                if metric in [
+                    "area_out_of_lungs"
+                ]:
+                    tmp.update(eval(metric)(data_dict["orig"], data_dict["expert"], data_dict[s_key]))
+
             out_data.append(tmp)
 
     return pd.DataFrame(out_data)
