@@ -8,13 +8,12 @@ import numpy as np
 import pandas as pd
 import surface_distance
 import tqdm
+from bao.config import system_config
+from bao.metrics import mask_utils
+from bao.metrics.ssim import ssim
+from bao.metrics.utils import *
 from scipy.ndimage.measurements import label
 from scipy.spatial.distance import directed_hausdorff
-
-from bao.config import system_config
-from bao.metrics.utils import *
-from bao.metrics.ssim import ssim
-from bao.metrics import mask_utils
 
 
 def intersection_and_union(img1, img2):
@@ -48,7 +47,7 @@ def dice(intersection, img1, img2, smooth=1):
     return (2 * np.sum(intersection) + smooth) / (area_sum + smooth)
 
 
-def inter_over_metrics(img1, img2):
+def inter_over_metrics(img1, img2, single_metric=False):
     """
     Arguments
     ---------
@@ -56,12 +55,15 @@ def inter_over_metrics(img1, img2):
     img1, img2  (np.ndarray) : Boolean np.ndarrays
     """
     intersection, union = intersection_and_union(img1, img2)
-    tmp = {
-        "iou": iou(intersection, union),
-        "iomin": iomin(intersection, img1, img2),
-        "iomax": iomax(intersection, img1, img2),
-        "dice": dice(intersection, img1, img2),
-    }
+    if single_metric:
+        tmp = {"dice": dice(intersection, img1, img2)}
+    else:
+        tmp = {
+            "iou": iou(intersection, union),
+            "iomin": iomin(intersection, img1, img2),
+            "iomax": iomax(intersection, img1, img2),
+            "dice": dice(intersection, img1, img2),
+        }
     return tmp
 
 
@@ -142,10 +144,9 @@ def ssims(img_expert, img_model):
 
 def surface_distances(img_expert, img_model):
     surface_distances = surface_distance.compute_surface_distances(img_expert, img_model, (0.1, 0.1))
-    dist, dist_inv = surface_distance.compute_average_surface_distance(surface_distances)
     robust_hausdorff = surface_distance.compute_robust_hausdorff(surface_distances, 95)
+    dist, dist_inv = surface_distance.compute_average_surface_distance(surface_distances)
     dice_at_tolerance = surface_distance.compute_surface_dice_at_tolerance(surface_distances, tolerance_mm=1.0)
-
     tmp = {
         "dist": dist,
         "dist_inv": dist_inv,
@@ -192,7 +193,7 @@ def positional_features(img_origin, img_expert, img_model):
 
     dists = get_nearest_neighbor_dist(centers_e, centers_m)
     w, h = get_lungs_size(img_origin)
-    max_dist = (w**2 + h**2)**0.5
+    max_dist = (w ** 2 + h ** 2) ** 0.5
 
     mean_centroid_dist = np.mean(dists) / max_dist if len(dists) > 0 else 0
     max_centroid_dist = np.max(dists) / max_dist if len(dists) > 0 else 0
@@ -208,6 +209,7 @@ def positional_features(img_origin, img_expert, img_model):
         "min_centroid_dist": min_centroid_dist,
     }
     return tmp
+
 
 def _read_png(fpath):
     return cv2.imread(fpath)[:, :, ::-1]
