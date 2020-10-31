@@ -6,10 +6,11 @@ import cv2
 import numpy as np
 import pandas as pd
 import tqdm
+from scipy.ndimage.measurements import label
 from scipy.spatial.distance import directed_hausdorff
-from bao.metrics.ssim import msssim, ssim
 
 from bao.config import system_config
+from bao.metrics.ssim import msssim, ssim
 
 
 def intersection_and_union(img1, img2):
@@ -38,6 +39,11 @@ def iomax(intersection, img1, img2):
     return np.sum(intersection) / area_max
 
 
+def dice(intersection, img1, img2, smooth=1):
+    area_sum = img1.sum() + img2.sum()
+    return (2 * np.sum(intersection) + smooth) / (area_sum + smooth)
+
+
 def inter_over_metrics(img1, img2):
     """
     Arguments
@@ -50,6 +56,7 @@ def inter_over_metrics(img1, img2):
         "iou": iou(intersection, union),
         "iomin": iomin(intersection, img1, img2),
         "iomax": iomax(intersection, img1, img2),
+        "dice": dice(intersection, img1, img2),
     }
     return tmp
 
@@ -70,6 +77,31 @@ def binary_feature(img_expert, img_model):
     return tmp
 
 
+def accuracy_features(img_expert, img_model):
+    structure = np.ones((3, 3), dtype=np.int)
+    labeled, ncomponents = label(img_expert, structure)
+    labeled_model, ncomponents_model = label(img_model, structure)
+
+    tp = len(np.unique(labeled[np.bitwise_and(labeled > 0, img_model > 0)]))
+    recall = np.nan if ncomponents == 0 else tp / ncomponents
+    precision = np.nan if ncomponents_model == 0 else tp / ncomponents_model
+    if precision + recall == 0.0:
+        f1 = 0.0
+    else:
+        f1 = (2 * precision * recall) / (precision + recall)
+
+    tmp = {
+        "ncomponents": ncomponents,
+        "ncomponents_model": ncomponents_model,
+        "ncomponents_diff": ncomponents - ncomponents_model,
+        "ncomponents_abs_diff": np.abs(ncomponents - ncomponents_model),
+        "recall": recall,
+        "precision": precision,
+        "f1": f1,
+    }
+    return tmp
+
+
 def hausdorff_distance(img_expert, img_model):
     """
     Arguments
@@ -77,7 +109,10 @@ def hausdorff_distance(img_expert, img_model):
 
     img_expert, img_model  (np.ndarray) : Boolean np.ndarrays
     """
-    tmp = {"hausdorf": directed_hausdorff(img_expert, img_model, seed=24)[0]}
+    tmp = {
+        "hausdorff": directed_hausdorff(img_expert, img_model, seed=24)[0],
+        "hausdorff_inv": directed_hausdorff(img_model, img_expert, seed=24)[0],
+    }
     return tmp
 
 
@@ -152,8 +187,14 @@ def get_metrics(data):
                 "fname": data_dict["fname"],
                 "sample_name": sample_name_dict[s_key],
             }
-            for metric in ["inter_over_metrics", "binary_feature", "hausdorff_distance", "ssims"]:
-                if metric in ["inter_over_metrics", "binary_feature", "hausdorff_distance", "ssims"]:
+            for metric in ["inter_over_metrics", "binary_feature", "hausdorff_distance", "ssims", "accuracy_features"]:
+                if metric in [
+                    "inter_over_metrics",
+                    "binary_feature",
+                    "hausdorff_distance",
+                    "ssims",
+                    "accuracy_features",
+                ]:
                     tmp.update(eval(metric)(data_dict["expert"], data_dict[s_key]))
             out_data.append(tmp)
 
