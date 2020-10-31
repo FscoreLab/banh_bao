@@ -5,6 +5,7 @@ import os.path as osp
 import cv2
 import numpy as np
 import pandas as pd
+import surface_distance
 import tqdm
 from scipy.ndimage.measurements import label
 from scipy.spatial.distance import directed_hausdorff
@@ -127,6 +128,23 @@ def ssims(img_expert, img_model):
     return tmp
 
 
+def surface_distances(img_expert, img_model):
+    surface_distances = surface_distance.compute_surface_distances(img_expert, img_model, (0.1, 0.1))
+    dist, dist_inv = surface_distance.compute_average_surface_distance(surface_distances)
+    robust_hausdorff = surface_distance.compute_robust_hausdorff(surface_distances, 95)
+    dice_at_tolerance = surface_distance.compute_surface_dice_at_tolerance(surface_distances, tolerance_mm=1.0)
+
+    tmp = {"dist": dist, "dist": dist_inv, "robust_hausdorff": robust_hausdorff, "dice_at_tolerance": dice_at_tolerance}
+    return tmp
+
+
+def area_features(img_expert, img_model):
+    area_expert = img_expert.sum()
+    area_model = img_model.sum()
+    tmp = {"area_abs_diff": np.abs(area_expert - area_model), "area_expert": area_expert, "area_model": area_model}
+    return tmp
+
+
 def _read_png(fpath):
     return cv2.imread(fpath)[:, :, ::-1]
 
@@ -187,13 +205,23 @@ def get_metrics(data):
                 "fname": data_dict["fname"],
                 "sample_name": sample_name_dict[s_key],
             }
-            for metric in ["inter_over_metrics", "binary_feature", "hausdorff_distance", "ssims", "accuracy_features"]:
+            for metric in [
+                "inter_over_metrics",
+                "binary_feature",
+                "hausdorff_distance",
+                "ssims",
+                "accuracy_features",
+                "surface_distances",
+                "area_features",
+            ]:
                 if metric in [
                     "inter_over_metrics",
                     "binary_feature",
                     "hausdorff_distance",
                     "ssims",
                     "accuracy_features",
+                    "surface_distances",
+                    "area_features",
                 ]:
                     tmp.update(eval(metric)(data_dict["expert"], data_dict[s_key]))
             out_data.append(tmp)
