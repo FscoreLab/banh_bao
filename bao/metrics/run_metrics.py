@@ -183,7 +183,31 @@ def prepare_markup(fpath):
     return markup[["id", "y"]]
 
 
-def get_metrics(data):
+def calc_metrics(data_expert, data_nn, gt='expert'):
+    tmp = {"gt": gt}
+    for metric in [
+        "inter_over_metrics",
+        "binary_feature",
+        "hausdorff_distance",
+        "ssims",
+        "accuracy_features",
+        "surface_distances",
+        "area_features",
+    ]:
+        if metric in [
+            "inter_over_metrics",
+            "binary_feature",
+            "hausdorff_distance",
+            "ssims",
+            "accuracy_features",
+            "surface_distances",
+            "area_features",
+        ]:
+            tmp.update(eval(metric)(data_expert, data_nn))
+    return tmp
+
+
+def get_metrics(data, markup=None):
     """
     Arguments
     ---------
@@ -199,31 +223,25 @@ def get_metrics(data):
     sample_name_dict = {"s1": "1", "s2": "2", "s3": "3"}
     for data_dict in tqdm.tqdm(data, desc="Generating metrics"):
         for s_key in ["s1", "s2", "s3"]:
-
             tmp = {
                 "id": f"{data_dict['fname']}_{sample_name_dict[s_key]}",
                 "fname": data_dict["fname"],
                 "sample_name": sample_name_dict[s_key],
             }
-            for metric in [
-                "inter_over_metrics",
-                "binary_feature",
-                "hausdorff_distance",
-                "ssims",
-                "accuracy_features",
-                "surface_distances",
-                "area_features",
-            ]:
-                if metric in [
-                    "inter_over_metrics",
-                    "binary_feature",
-                    "hausdorff_distance",
-                    "ssims",
-                    "accuracy_features",
-                    "surface_distances",
-                    "area_features",
-                ]:
-                    tmp.update(eval(metric)(data_dict["expert"], data_dict[s_key]))
+
+            # Check similarity of scores and generate new features if exist model having score 5
+            # If there are several models with score 5, their intersection is not removed now
+            if not isinstance(markup, type(None)) and tmp["id"] in markup['id'].values:
+                index = pd.Index(markup["id"]).get_loc(tmp["id"])
+                if markup["y"][index] == 5:
+                    interest_samples = ["s1", "s2", "s3"]
+                    interest_samples.remove(s_key)
+                    for interest_s_key in interest_samples:
+                        tmp.update(calc_metrics(data_dict[s_key], data_dict[interest_s_key], gt=tmp["sample_name"]))
+                        out_data.append(tmp)
+                    continue
+
+            tmp.update(calc_metrics(data_dict["expert"], data_dict[s_key]))
             out_data.append(tmp)
 
     return pd.DataFrame(out_data)
@@ -250,11 +268,12 @@ if __name__ == "__main__":
     output_file = osp.join(args.output_dir, f"{args.task_name}.csv")
 
     data = read_files(args)
-    metrics = get_metrics(data)
 
     if args.add_markup:
         markup = prepare_markup(args.markup)
-        metrics = pd.merge(metrics, markup, how="left", on="id")
+        metrics = get_metrics(data, markup)
+    else:
+        metrics = get_metrics(data)
 
     os.makedirs(args.output_dir, exist_ok=True)
     metrics.to_csv(output_file, index=False)
