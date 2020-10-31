@@ -1,0 +1,1 @@
+python bao/metrics/run_net.py && python bao/train_model.py

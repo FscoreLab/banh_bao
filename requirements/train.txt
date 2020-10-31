@@ -3,15 +3,8 @@ lightgbm==2.3.1
 jupyter==1.0.0
 blinker==1.4
 opencv_python_headless==4.1.0.25
-Flask==1.1.1
-redis==3.5.3
-Werkzeug==0.15.4
-aiohttp==3.5.4
-Flask_RESTful==0.3.7
 numpy==1.19.3
 pandas==1.1.4
-boto3==1.9.188
-botocore==1.12.188
 Pillow==8.0.1
 python-dotenv==0.10.3
 scikit-image==0.17.2
@@ -22,11 +15,7 @@ streamlit_drawable_canvas
 git+https://github.com/Miffka/gradcam_plus_plus-pytorch.git@00197295f3e5454bd61f820d503b6e3a53278a9c
 git+https://github.com/FscoreLab/lungs-finder.git
 git+https://github.com/FscoreLab/surface-distance.git
-gunicorn==20.0.4
-gevent==1.4.0
-SimpleITK==1.2.4
 seaborn==0.11.0
 lungs-finder
 tqdm==4.43.0
 torchxrayvision
-
