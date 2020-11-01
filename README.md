@@ -65,4 +65,22 @@ Hausdorff distance
 
 F1 по объектам
 
+## Docker
+### Building
+```bash
+docker build -t train_image --target train .
+```
+```bash
+docker build -t predict_image --target predict .
+```
+### Running
+```bash
+docker run train_image
+```
+```bash
+docker run --env-file INPUT predict_image
+```
+
+
+
 **(c) Team "Бань Бао"**
