@@ -22,9 +22,6 @@ COPY bao ./bao
 
 FROM base as train
 
-COPY data ./data
-COPY models ./models
-
 COPY train.sh train.sh
 CMD ["sh", "train.sh"]
 

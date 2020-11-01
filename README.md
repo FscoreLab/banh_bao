@@ -32,16 +32,18 @@ stramlit run draw_predict_mask.py
 
 ## Тренировка
 
+Замените `/home/glyc/Documents/banh_bao/data` на абсолютный путь до папки `data`, который начинается c `/` или с `~/`.
+
 ```
 docker build -t train_image --target train .
-
+docker run --rm -v /home/glyc/Documents/banh_bao/data:/data -v /home/glyc/Documents/banh_bao/data:/data --name bao_train train_image
 ```
 
 ## Использование
 
 ```
 docker build -t predict_image --target predict .
-docker run -d --rm -p 8501:8501 predict_image
+docker run -d --rm -p 8501:8501 --name bao_predict predict_image
 ```
 
 Откройте в браузере ссылку [http://172.17.0.2:8501/](http://172.17.0.2:8501/).
@@ -126,11 +128,6 @@ result = AND(diff_mask, model_mask)
 #### Позиционные признаки. 
 Был вычислен общий центр масс всех патологий на всей маске и центр масс маски сегментирующей легкие, спасибо [lungs_finder](https://github.com/dirtmaxim/lungs-finder/tree/master/lungs_finder).
 Метрика - положение центра масс патологий относительно центра масс легких.
-<<<<<<< HEAD
-
-Также сравнили патологии описанные своим центром масс попарно. Нашли пары ближайших друг к другу. И нашли среднее/max/min из всех расстояний в парах.
-=======
->>>>>>> origin/master
 
 Также сравнили патологии описанные своим центром масс попарно. Нашли пары ближайших друг к другу. И нашли среднее/max/min из всех расстояний в парах.
 **(c) Team "Бань Бао"**
