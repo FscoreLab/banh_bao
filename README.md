@@ -4,13 +4,36 @@
 
 [Хакатон "Лидеры Цифровой Трансформации"](https://lk.hack2020.innoagency.ru/)
 
-# Использование
+## Docker
 
 Приложение можно запустить через докер. Требуется [установить docker](https://docs.docker.com/engine/install/).
 
-## В локальном окружении
-
 ### Тренировка
+
+Замените `/home/glyc/Documents/banh_bao/data` на абсолютный путь до папки `data`, который начинается c `/` или с `~/`.
+
+```
+docker build -t train_image --target train .
+docker run --rm -v /home/glyc/Documents/banh_bao/data:/data -v /home/glyc/Documents/banh_bao/data:/data --name bao_train train_image
+```
+
+### Использование
+
+```
+docker build -t predict_image --target predict .
+docker run -d --rm -p 8501:8501 --name bao_predict predict_image
+```
+
+Откройте в браузере ссылку [http://localhost:8501/](http://localhost:8501/).
+
+Остановите сервис при помощи команды
+```
+docker stop bao_predict
+```
+
+## Локальное окружение
+
+### Установка
 
 ```
 conda create --name banhbao
@@ -21,39 +44,12 @@ pip install -r requirements/train.txt
 pip install -e .
 ```
 
-### Streamlit
+### Разворачивание сервиса
+
 ```
 cd streamlit
 stramlit run draw_predict_mask.py
 # open localhost:8501
-```
-
-## В докере
-
-## Тренировка
-
-Замените `/home/glyc/Documents/banh_bao/data` на абсолютный путь до папки `data`, который начинается c `/` или с `~/`.
-
-```
-docker build -t train_image --target train .
-docker run --rm -v /home/glyc/Documents/banh_bao/data:/data -v /home/glyc/Documents/banh_bao/data:/data --name bao_train train_image
-```
-
-## Использование
-
-```
-docker build -t predict_image --target predict .
-docker run -d --rm -p 8501:8501 --name bao_predict predict_image
-```
-
-Откройте в браузере ссылку [localhost:8501/](http://172.17.0.2:8501/).
-
-
-# Установка в качестве пакета
-
-```
-pip install -r requirements.txt
-pip install -e .
 ```
 
 # Документация
