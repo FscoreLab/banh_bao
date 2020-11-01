@@ -51,7 +51,8 @@ if canvas_result.json_data is not None and bg_image is not None and gt_mask_file
     results = canvas_result.json_data["objects"]
     mask = np.zeros((1024, 1024), dtype=bool)
     for res in results:
-        mask[res["top"] * 2 : (res["top"] + res["height"]) * 2, res["left"] * 2 : (res["left"] + res["width"]) * 2] = 1
+
+        mask[int(res["top"]) * 2 : (int(res["top"]) + int(res["height"])) * 2, int(res["left"]) * 2 : (int(res["left"]) + int(res["width"])) * 2] = 1
 
     prediction, shap_obj = predict(orig_image, gt_mask.astype(bool), mask, return_shap=True)
     st.markdown(f"# Prediction: {prediction}")
