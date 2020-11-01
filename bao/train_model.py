@@ -192,7 +192,7 @@ if __name__ == "__main__":
     df_train[["id", "prediction", "y"]].to_csv(
         osp.join(system_config.data_dir, "processed", "train_predictions.csv"), index=False
     )
-    df_test[["id", "prediction"]].to_csv(
+    df_test.to_csv(
         osp.join(system_config.data_dir, "processed", "test_predictions.csv"), index=False
     )
 

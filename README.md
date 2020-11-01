@@ -1,33 +1,39 @@
 # BAO
 
-Evalutation instrument for instance segmentation markup
+Инструмент оценки качества работы алгоритмов разметки медицинских изображений
 
-[Hackathon "Лидеры Цифровой Трансформации"](https://lk.hack2020.innoagency.ru/)
+[Хакатон "Лидеры Цифровой Трансформации"](https://lk.hack2020.innoagency.ru/)
 
-# Installation
+# Использование
+
+Приложение можно запустить через докер. Требуется [установить docker](https://docs.docker.com/engine/install/).
+
+## Тренировка
+
+```
+docker build -t train_image --target train .
+
+
+```
+
+## Использование
+
+```
+docker build -t predict_image --target predict .
+docker run -d --rm -p 8501:8501 predict_image
+```
+
+Откройте в браузере ссылку [http://172.17.0.2:8501/](http://172.17.0.2:8501/).
+
+
+# Установка в качестве пакета
 
 ```
 pip install -r requirements.txt
 pip install -e .
 ```
 
-## Usage
-
-## Training
-
-### Gather metrics from markup
-
-```bash
-python bao/metrics/run_metrics.py --add_markup
-```
-
-### Split any dataframe with "fname" column
-
-```python
-from bao.utils import split_df
-
-split_df(df)
-```
+# Документация
 
 ## Как это работает
 Полученная модель позволяет сравнивать два снимка сегментационной разметки. 
@@ -99,4 +105,5 @@ result = AND(diff_mask, model_mask)
 Метрика - положение центра масс патологий относительно центра масс легких.
 
 Также сравнили патологии описанные своим центром масс попарно. Нашли пары ближайших друг к другу. И нашли среднее/max/min из всех расстояний в парах.
+
 **(c) Team "Бань Бао"**

@@ -18,23 +18,33 @@ RUN pip3 install -e .
 COPY requirements/train.txt requirements/
 RUN pip3 install --no-cache-dir -r /requirements/train.txt
 
-COPY bao/ bao/
-VOLUME models/
-VOLUME data/
+COPY bao ./bao
 
 FROM base as train
 
+COPY data ./data
+COPY models ./models
+
 COPY train.sh train.sh
-CMD "./train.sh"
+CMD ["sh", "train.sh"]
 
 FROM base as predict
 
-ENV FILE_ORIG=""
-ENV FILE_EXPERT=""
-ENV FILE_MODEL=""
+# streamlit-specific commands
+RUN mkdir -p /root/.streamlit
+RUN bash -c 'echo -e "\
+[general]\n\
+email = \"\"\n\
+" > /root/.streamlit/credentials.toml'
+RUN bash -c 'echo -e "\
+[server]\n\
+enableCORS = false\n\
+" > /root/.streamlit/config.toml'
 
-ENV OUTPUT_DIR=""
+# exposing default port for streamlit
+EXPOSE 8501
 
-CMD ["python",  "bao/inference/predict.py", "--file_orig", "$FILE_ORIG", "--file_expert", "$FILE_EXPERT", "--file_model", "$FILE_MODEL", "--output_dir", "$OUTPUT_DIR"]
+COPY streamlit/ streamlit/
+COPY models/ models/
 
-
+CMD streamlit run streamlit/evaluate.py
