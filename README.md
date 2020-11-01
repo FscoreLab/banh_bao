@@ -32,16 +32,18 @@ stramlit run draw_predict_mask.py
 
 ## Тренировка
 
+Замените `/home/glyc/Documents/banh_bao/data` на абсолютный путь до папки `data`, который начинается c `/` или с `~/`.
+
 ```
 docker build -t train_image --target train .
-
+docker run --rm -v /home/glyc/Documents/banh_bao/data:/data -v /home/glyc/Documents/banh_bao/data:/data --name bao_train train_image
 ```
 
 ## Использование
 
 ```
 docker build -t predict_image --target predict .
-docker run -d --rm -p 8501:8501 predict_image
+docker run -d --rm -p 8501:8501 --name bao_predict predict_image
 ```
 
 Откройте в браузере ссылку [localhost:8501/](http://172.17.0.2:8501/).
