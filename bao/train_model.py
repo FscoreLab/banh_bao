@@ -120,13 +120,13 @@ if __name__ == "__main__":
         }
     else:
         param_grid = {
-            "n_estimators": [40],
+            "n_estimators": [50],
             "colsample_bytree": [0.25],
-            "min_child_samples": [4],
+            "min_child_samples": [3],
             "num_leaves": [7],
-            "k": [15],
-            "reg_alpha": [0.1],
-            "reg_lambda": [1.0],
+            "k": [len(predictors)],
+            "reg_alpha": [1.0],
+            "reg_lambda": [0.0],
         }
 
     nested_score = None
