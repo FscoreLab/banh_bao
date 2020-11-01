@@ -74,8 +74,8 @@ def postprocess_predictions(df):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train model")
 
-    parser.add_argument("--inner_splits", type=int, default=10, help="number of inner folds")
-    parser.add_argument("--outer_splits", type=int, default=10, help="number of outer folds")
+    parser.add_argument("--inner_splits", type=int, default=7, help="number of inner folds")
+    parser.add_argument("--outer_splits", type=int, default=7, help="number of outer folds")
     parser.add_argument("--plot_shap", action="store_true")
     parser.add_argument("--evaluate_with_nested_cv", action="store_true")
     parser.add_argument("--tune_parameters", action="store_true")
