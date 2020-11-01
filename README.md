@@ -17,6 +17,13 @@ docker build -t train_image --target train .
 docker run --rm -v /home/glyc/Documents/banh_bao/data:/data -v /home/glyc/Documents/banh_bao/data:/data --name bao_train train_image
 ```
 
+### Наши предсказания
+
+Предсказания для тестового пака находятся по пути
+```
+./data/processed/test_predictions.csv
+```
+
 ### Использование
 
 ```
