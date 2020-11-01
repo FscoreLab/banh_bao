@@ -110,12 +110,12 @@ if __name__ == "__main__":
         }
     else:
         param_grid = {
-            "n_estimators": [300],
-            "colsample_bytree": [0.75],
-            "min_child_samples": [1],
-            "num_leaves": [5],
-            "k": [len(predictors)],
-            "reg_alpha": [0.0],
+            "n_estimators": [40],
+            "colsample_bytree": [0.25],
+            "min_child_samples": [4],
+            "num_leaves": [7],
+            "k": [15],
+            "reg_alpha": [0.1],
             "reg_lambda": [1.0],
         }
 
