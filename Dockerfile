@@ -25,7 +25,7 @@ FROM base as train
 COPY train.sh train.sh
 CMD ["sh", "train.sh"]
 
-FROM base as predict
+FROM base as streamlit
 
 # streamlit-specific commands
 RUN mkdir -p /root/.streamlit
@@ -44,4 +44,10 @@ EXPOSE 8501
 COPY streamlit/ streamlit/
 COPY models/ models/
 
+FROM streamlit as predict
+
 CMD streamlit run streamlit/evaluate.py
+
+FROM streamlit as interactive
+
+CMD streamlit run streamlit/draw_predict_mask.py

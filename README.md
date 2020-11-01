@@ -28,6 +28,8 @@ docker run --rm -v /home/glyc/Documents/banh_bao/data:/data -v /home/glyc/Docume
 
 ### Использование
 
+### Оценка предсказаний модели
+
 ```
 docker build -t predict_image --target predict .
 docker run -d --rm -p 8501:8501 --name bao_predict predict_image
@@ -38,6 +40,20 @@ docker run -d --rm -p 8501:8501 --name bao_predict predict_image
 Остановите сервис при помощи команды
 ```
 docker stop bao_predict
+```
+
+### Интерактивная оценка разметки
+
+```
+docker build -t interactive_image --target interactive .
+docker run -d --rm -p 8501:8501 --name bao_interactive interactive_image
+```
+
+Откройте в браузере ссылку [http://localhost:8501/](http://localhost:8501/).
+
+Остановите сервис при помощи команды
+```
+docker stop bao_interactive
 ```
 
 ## Локальное окружение
