@@ -95,6 +95,44 @@ def accuracy_features(img_expert, img_model):
         "ncomponents_abs_diff": np.abs(ncomponents - ncomponents_model),
     }
 
+    all_labels = [(i + 1) for i in range(ncomponents)]
+    pred_labels = [(i + 1) for i in range(ncomponents_model)]
+    ious = {true_label: 0.0 for true_label in all_labels}
+    ious_pred = {pred_label: 0.0 for pred_label in pred_labels}
+    for pred_label in pred_labels:
+        correct_pred = labeled[np.bitwise_and(labeled > 0, labeled_model == pred_label)]
+        intersection = Counter(correct_pred)
+        for true_label in np.unique(correct_pred):
+            union = np.sum(np.bitwise_or(labeled == true_label, labeled_model == pred_label))
+            iou = intersection[true_label] / union
+            if iou > ious.get(true_label):
+                ious[true_label] = iou
+            if iou > ious_pred.get(pred_label):
+                ious_pred[pred_label] = iou
+
+    iou_thresholds = (0.0, 0.25, 0.5)
+    for iou_threshold in iou_thresholds:
+        tp = len([obj_label for obj_label in all_labels if ious[obj_label] > iou_threshold])
+        fp = len([obj_label for obj_label in pred_labels if ious_pred[obj_label] <= iou_threshold])
+        recall = 1.0 if ncomponents == 0 else tp / ncomponents
+        precision = 1.0 if (tp + fp) == 0 else tp / (tp + fp)
+        tmp[f"recall_{iou_threshold}"] = recall
+        tmp[f"precision_{iou_threshold}"] = precision
+        if precision + recall == 0.0:
+            tmp[f"f1_{iou_threshold}"] = 0.0
+        else:
+            tmp[f"f1_{iou_threshold}"] = (2 * precision * recall) / (precision + recall)
+
+    return tmp
+
+
+def accuracy_features_legacy(img_expert, img_model):
+    structure = np.ones((3, 3), dtype=np.int)
+    labeled, ncomponents = label(img_expert, structure)
+    labeled_model, ncomponents_model = label(img_model, structure)
+
+    tmp = {}
+
     correct_pred = labeled[np.bitwise_and(labeled > 0, img_model > 0)]
     intersection = Counter(correct_pred)
     union = Counter(labeled[np.bitwise_or(labeled > 0, img_model > 0)])
@@ -103,17 +141,15 @@ def accuracy_features(img_expert, img_model):
     for obj_label in true_labels:
         ious[obj_label] = intersection.get(obj_label, 0.0) / union.get(obj_label, 0.01)
 
-    iou_thresholds = (0.0, 0.25, 0.5)
+    iou_thresholds = (0.0, 0.25)
     for iou_threshold in iou_thresholds:
         tp = len([obj_label for obj_label in true_labels if ious[obj_label] > iou_threshold])
         recall = 1.0 if ncomponents == 0 else tp / ncomponents
-        precision = 1.0 if ncomponents_model == 0 else tp / ncomponents_model
-        tmp[f"recall_{iou_threshold}"] = recall
-        tmp[f"precision_{iou_threshold}"] = precision
+        precision = 1.0 if max(ncomponents_model, ncomponents) == 0 else tp / max(ncomponents_model, ncomponents)
         if precision + recall == 0.0:
-            tmp[f"f1_{iou_threshold}"] = 0.0
+            tmp[f"leg_f1_{iou_threshold}"] = 0.0
         else:
-            tmp[f"f1_{iou_threshold}"] = (2 * precision * recall) / (precision + recall)
+            tmp[f"leg_f1_{iou_threshold}"] = (2 * precision * recall) / (precision + recall)
 
     return tmp
 
@@ -171,7 +207,7 @@ def pixel_accuracy_features(img_expert, img_model):
         "pixel_accuracy": metrics.accuracy_score(expert_arr, model_arr),
         "pixel_recall": metrics.recall_score(expert_arr, model_arr),
         "pixel_precision": metrics.precision_score(expert_arr, model_arr),
-        "pixel_f1": metrics.f1_score(expert_arr, model_arr)
+        "pixel_f1": metrics.f1_score(expert_arr, model_arr),
     }
     return tmp
 
@@ -284,11 +320,12 @@ def calc_metrics(data_expert, data_nn, data_orig, form_dict=None, gt="expert"):
         "hausdorff_distance",
         "ssims",
         "accuracy_features",
+        "accuracy_features_legacy",
         "surface_distances",
         "area_features",
         "area_out_of_lungs",
         "positional_features",
-        "pixel_accuracy_features"
+        "pixel_accuracy_features",
     ]:
         if metric in [
             "inter_over_metrics",
@@ -296,9 +333,10 @@ def calc_metrics(data_expert, data_nn, data_orig, form_dict=None, gt="expert"):
             "hausdorff_distance",
             "ssims",
             "accuracy_features",
+            "accuracy_features_legacy",
             "surface_distances",
             "area_features",
-            "pixel_accuracy_features"
+            "pixel_accuracy_features",
         ]:
             tmp.update(eval(metric)(data_expert, data_nn))
 
@@ -412,18 +450,19 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("--output_dir", default=osp.join(system_config.data_dir, "interim"))
+    parser.add_argument("--regenerate_data", action="store_true")
 
     args = parser.parse_args()
 
     output_file = osp.join(args.output_dir, f"{args.task_name}.csv")
+    if not osp.exists(output_file) or args.regenerate_data:
+        data = read_files(args)
 
-    data = read_files(args)
+        if args.add_markup:
+            markup = prepare_markup(args.markup)
+            metrics_df = get_metrics(data, markup, form_mode=args.form_mode)
+        else:
+            metrics_df = get_metrics(data, form_mode=args.form_mode)
 
-    if args.add_markup:
-        markup = prepare_markup(args.markup)
-        metrics = get_metrics(data, markup, form_mode=args.form_mode)
-    else:
-        metrics = get_metrics(data, form_mode=args.form_mode)
-
-    os.makedirs(args.output_dir, exist_ok=True)
-    metrics.to_csv(output_file, index=False)
+        os.makedirs(args.output_dir, exist_ok=True)
+        metrics_df.to_csv(output_file, index=False)

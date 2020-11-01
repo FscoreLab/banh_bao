@@ -5,6 +5,7 @@ import pickle
 
 import numpy as np
 import pandas as pd
+import shap
 
 from bao.config import system_config, api_config
 from bao.metrics.run_net import load_model as load_neural_network
@@ -32,7 +33,7 @@ def create_form_dict(img_expert, img_model):
     return form_dict
 
 
-def predict(img_origin, img_expert, img_model):
+def predict(img_origin, img_expert, img_model, return_shap=False):
     # Get prediction for exernal model
     df_torch = get_probs_for_3ch_image(NEURAL_NET, img_origin)
 
@@ -54,6 +55,17 @@ def predict(img_origin, img_expert, img_model):
 
     # Prediction
     prediction = MODEL.predict(df[predictors])[0]
+
+    if return_shap:
+        X_tr = MODEL.selector.transform(df[predictors])
+        explainer = shap.TreeExplainer(MODEL.base_model)
+        shap_values = explainer.shap_values(X_tr)
+        topk = MODEL.selector.get_support()
+        shap_obj = shap.force_plot(
+            explainer.expected_value, shap_values[0, :], X_tr[0, :], feature_names=df[predictors].columns[topk]
+        )
+        return prediction, shap_obj
+
     return prediction
 
 
@@ -63,9 +75,15 @@ MODEL = load_regressor()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Get prediction for 1 pair of files")
-    parser.add_argument("--file_orig", default=osp.join(system_config.data_dir, "Dataset", "Origin", "00013977_005.png"))
-    parser.add_argument("--file_expert", default=osp.join(system_config.data_dir, "Dataset", "Expert", "00013977_005_expert.png"))
-    parser.add_argument("--file_model", default=osp.join(system_config.data_dir, "Dataset", "sample_1", "00013977_005_s1.png"))
+    parser.add_argument(
+        "--file_orig", default=osp.join(system_config.data_dir, "Dataset", "Origin", "00013977_005.png")
+    )
+    parser.add_argument(
+        "--file_expert", default=osp.join(system_config.data_dir, "Dataset", "Expert", "00013977_005_expert.png")
+    )
+    parser.add_argument(
+        "--file_model", default=osp.join(system_config.data_dir, "Dataset", "sample_1", "00013977_005_s1.png")
+    )
     parser.add_argument("--output_dir", default=osp.join(system_config.data_dir, "prediction"))
 
     args = parser.parse_args()
