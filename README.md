@@ -1,10 +1,16 @@
 # BAO
 
-Evalutation instrument for instance segmentation markup
+Инструмент оценки качества работы алгоритмов разметки медицинских изображений
 
-[Hackathon "Лидеры Цифровой Трансформации"](https://lk.hack2020.innoagency.ru/)
+[Хакатон "Лидеры Цифровой Трансформации"](https://lk.hack2020.innoagency.ru/)
 
-# Installation
+# Использование
+
+Приложение можно запустить через докер. Требуется [установить docker](https://docs.docker.com/engine/install/).
+
+## В локальном окружении
+
+### Тренировка
 
 ```
 conda create --name banhbao
@@ -15,8 +21,6 @@ pip install -r requirements/train.txt
 pip install -e .
 ```
 
-## Usage
-
 ### Streamlit
 ```
 cd streamlit
@@ -24,21 +28,33 @@ stramlit run draw_predict_mask.py
 # open localhost:8501
 ```
 
-## Training
+## В докере
 
-### Gather metrics from markup
+## Тренировка
 
-```bash
-python bao/metrics/run_metrics.py --add_markup
+```
+docker build -t train_image --target train .
+
 ```
 
-### Split any dataframe with "fname" column
+## Использование
 
-```python
-from bao.utils import split_df
-
-split_df(df)
 ```
+docker build -t predict_image --target predict .
+docker run -d --rm -p 8501:8501 predict_image
+```
+
+Откройте в браузере ссылку [http://172.17.0.2:8501/](http://172.17.0.2:8501/).
+
+
+# Установка в качестве пакета
+
+```
+pip install -r requirements.txt
+pip install -e .
+```
+
+# Документация
 
 ## Как это работает
 Полученная модель позволяет сравнивать два снимка сегментационной разметки. 
@@ -110,6 +126,11 @@ result = AND(diff_mask, model_mask)
 #### Позиционные признаки. 
 Был вычислен общий центр масс всех патологий на всей маске и центр масс маски сегментирующей легкие, спасибо [lungs_finder](https://github.com/dirtmaxim/lungs-finder/tree/master/lungs_finder).
 Метрика - положение центра масс патологий относительно центра масс легких.
+<<<<<<< HEAD
+
+Также сравнили патологии описанные своим центром масс попарно. Нашли пары ближайших друг к другу. И нашли среднее/max/min из всех расстояний в парах.
+=======
+>>>>>>> origin/master
 
 Также сравнили патологии описанные своим центром масс попарно. Нашли пары ближайших друг к другу. И нашли среднее/max/min из всех расстояний в парах.
 **(c) Team "Бань Бао"**
