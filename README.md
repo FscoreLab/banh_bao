@@ -37,6 +37,8 @@ docker run -d --rm -p 8501:8501 --name bao_predict predict_image
 
 Откройте в браузере ссылку [http://localhost:8501/](http://localhost:8501/).
 
+Загрузите 3 изображения - оригинал, разметка эксперта и разметка модели - в соответствующие поля. Сервис покажет оценку разметки и shapley-значения.
+
 Остановите сервис при помощи команды
 ```
 docker stop bao_predict
@@ -48,6 +50,8 @@ docker stop bao_predict
 docker build -t interactive_image --target interactive .
 docker run -d --rm -p 8501:8501 --name bao_interactive interactive_image
 ```
+
+Загрузите 2 изображения - оригинал и разметку эксперта - в соответствующие поля. Рисуйте свою разметку на изображении. Сервис покажет оценку Вашей разметки в реальном времени.
 
 Откройте в браузере ссылку [http://localhost:8501/](http://localhost:8501/).
 
