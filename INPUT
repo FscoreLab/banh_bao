@@ -1,0 +1,4 @@
+FILE_ORIG=/home/okhrimenko_em/Projects/banh_bao/data/Dataset/Origin/00000072_000.png
+FILE_EXPERT=/home/okhrimenko_em/Projects/banh_bao/data/Dataset/Expert/00000072_000_expert.png
+FILE_MODEL=/home/okhrimenko_em/Projects/banh_bao/data/Dataset/sample_1/00000072_000_s1.png
+OUTPUT_DIR=/home/okhrimenko_em/Projects/banh_bao/data/prediction
