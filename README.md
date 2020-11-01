@@ -12,6 +12,8 @@
 
 Замените `/home/glyc/Documents/banh_bao/data` на абсолютный путь до папки `data`, который начинается c `/` или с `~/`.
 
+Тренировка модели занимает около 15 минут.
+
 ```
 docker build -t train_image --target train .
 docker run --rm -v /home/glyc/Documents/banh_bao/data:/data -v /home/glyc/Documents/banh_bao/data:/data --name bao_train train_image
@@ -55,7 +57,7 @@ pip install -e .
 
 ```
 cd streamlit
-stramlit run draw_predict_mask.py
+stramlit run evaluate.py
 # open localhost:8501
 ```
 
