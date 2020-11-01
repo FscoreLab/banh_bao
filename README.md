@@ -7,11 +7,22 @@ Evalutation instrument for instance segmentation markup
 # Installation
 
 ```
-pip install -r requirements.txt
+conda create --name banhbao
+conda activate banhbao
+
+pip install -r requirements/torch.txt
+pip install -r requirements/train.txt
 pip install -e .
 ```
 
 ## Usage
+
+### Streamlit
+```
+cd streamlit
+stramlit run draw_predict_mask.py
+# open localhost:8501
+```
 
 ## Training
 
